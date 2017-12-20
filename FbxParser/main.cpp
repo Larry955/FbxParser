@@ -34,11 +34,11 @@ vector<FbxVector4>polygonVertex;
 FbxVector4 *controlPoints;
 FbxMesh *mesh;
 
-//旋转参数
+//rotate factor
 static GLfloat xRot = 0.0f;
 static GLfloat yRot = 0.0f;
 
-//缩放参数
+//scale factor
 static GLfloat xScale = 1.0f;
 static GLfloat yScale = 1.0f;
 static GLfloat zScale = 1.0f;
@@ -769,13 +769,13 @@ void SpecialKeys(int key, int x, int y)
 
 void MouseFunc(int button, int action, int x, int y)
 {
-	//按下左键以放大模型
+	//left button to enlarge
 	if (button == GLUT_LEFT_BUTTON && action == GLUT_DOWN){
 		xScale += 0.1;
 		yScale += 0.1;
 		zScale += 0.1;
 	}
-	//按下右键以缩小模型
+	//right button to shrink
 	if (button == GLUT_RIGHT_BUTTON && action == GLUT_UP){
 		xScale -= 0.1;
 		yScale -= 0.1;
