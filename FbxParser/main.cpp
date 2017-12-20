@@ -2,6 +2,9 @@
 #include <gl\glut.h>
 #include <vector>
 #include <assert.h>
+
+#include "FbxParser.h"
+#include "ModelReconstruct.h"
 using std::vector;
 
 #ifdef IOS_REF
@@ -543,7 +546,7 @@ void displayMesh(FbxNode *node)
 			}*/
 		}
 	}
-	glutDisplayFunc(displayModel);
+	//glutDisplayFunc(displayModel);
 	FBXSDK_printf("\n\n");
 }
 
