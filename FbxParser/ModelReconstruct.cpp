@@ -2,7 +2,7 @@
 #include <vector>
 using std::vector;
 
-ModelReconstruct::ModelReconstruct(FbxParser *parser) :parser(parser)
+ModelReconstruct::ModelReconstruct(FbxParser *parser, int argc, char **argv) :parser(parser), argc(argc), argv(argv)
 {
 
 	initModelSpace();
@@ -56,12 +56,21 @@ void ModelReconstruct::initModelSpace()
 	glEnable(GL_DEPTH_TEST);
 	glClearColor(1.0, 1.0, 1.0, 1.0);
 
-	glMatrixMode(GL_PROJECTION);
+	//used for at.fbx
+	/*glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
 	gluPerspective(120, 1, 1, 80);
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
-	gluLookAt(0, -40, 50, 0, 60, 50, 0, 0, 1);
+	gluLookAt(0, -40, 50, 0, 60, 40, 0, 0, 1);*/
+
+	//for bunny.fbx
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	gluPerspective(120, 1, 1, 80000);
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+	gluLookAt(200, 250, -300, 0, 150, 0, 0, 1, 0.5);
 }
 
 void* mymalloc(size_t size)
@@ -71,11 +80,21 @@ void* mymalloc(size_t size)
 }
 
 template <typename F>
-void(*)() fkmemfunccastvoid(F f)
+void* fkmemfunccastvoid(F f)
 {
 	void * p = mymalloc(sizeof(F));
 	new(p) F(f);
 	return p;
+}
+
+template <typename T>
+void fun2(T *obp, void (T::*p)()){
+	(obp->*p)();
+}
+
+void displayCallBack()
+{
+	currModelRec->display();
 }
 
 void ModelReconstruct::display()
@@ -147,10 +166,8 @@ void ModelReconstruct::display()
 }
 void ModelReconstruct::displayModel()
 {
-	void(*)() p = fkmemfunccastvoid(&ModelReconstruct::display);
-
-	
-	glutDisplayFunc(p);
+	currModelRec = this;
+	glutDisplayFunc(::displayCallBack);
 	
 }
 
@@ -218,4 +235,10 @@ void ModelReconstruct::caclNormal(FbxMesh *mesh, int vertexIndex, int vertexCoun
 	default:
 		break;
 	}
+}
+
+void ModelReconstruct::loop()
+{
+	glutPostRedisplay();
+	glutMainLoop();
 }

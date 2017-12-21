@@ -11,7 +11,7 @@
 class FbxParser
 {
 public:
-	FbxParser();
+	FbxParser(FbxString fbxFile);
 	~FbxParser();
 
 	FbxParser(const FbxParser&) = delete;
@@ -23,25 +23,28 @@ public:
 	FbxMesh* getFbxMesh(){ return pMesh; }
 	void setFbxMesh(FbxMesh *mesh){ this->pMesh = pMesh; }
 
-	bool loadScene(FbxManager *pManager, FbxScene *pScene, FbxString fbxFile);	//load scene,return false if failed
+	bool loadScene();	//load scene,return false if failed
 	void displayMetaData(FbxScene *pScene);
 	void displayGlobalLightSettings(FbxGlobalSettings *pGlobalSettings);
 	void displayHierarchy(FbxScene *pScene);
 	void displayContent(FbxScene *pScene);
-	void displayMarker(FbxNode *node);
-	void displaySkeleton(FbxNode *node);
-	void displayMesh(FbxNode *node);
-	void displayTexture(FbxNode *node);
 
 
 private:
 	FbxManager *pManager;
 	FbxScene *pScene;
 	FbxMesh *pMesh;
+	FbxString fbxFile;
 	FbxVector4 *controlPoints;
 	void initFbxObjects();	//initialize FbxManage, FbxScene,etc
+
 	void displayHierarchy(FbxNode *node, int depth);
 	void displayContent(FbxNode *node);
+
+	void displayMarker(FbxNode *node);
+	void displaySkeleton(FbxNode *node);
+	void displayMesh(FbxNode *node);
+	void displayTexture(FbxNode *node);
 };
  
 #endif 

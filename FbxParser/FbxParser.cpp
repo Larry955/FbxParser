@@ -1,8 +1,8 @@
 #include "FbxParser.h"
 #include <assert.h>
 
-FbxParser::FbxParser() :
-pManager(nullptr), pScene(nullptr), pMesh(nullptr), controlPoints()
+FbxParser::FbxParser(FbxString fbxFile) :
+pManager(nullptr), pScene(nullptr), pMesh(nullptr), fbxFile(fbxFile), controlPoints()
 {
 	initFbxObjects();
 }
@@ -35,7 +35,7 @@ void FbxParser::initFbxObjects()
 	}
 }
 
-bool FbxParser::loadScene(FbxManager *pManager, FbxScene *pScene, FbxString fbxFile)
+bool FbxParser::loadScene()
 {
 	assert(pManager != nullptr && pScene != nullptr);
 
@@ -112,6 +112,7 @@ bool FbxParser::loadScene(FbxManager *pManager, FbxScene *pScene, FbxString fbxF
 
 void FbxParser::displayMetaData(FbxScene *pScene)
 {
+	FBXSDK_printf("\n\n--------------------------Meta Data------------------------------\n\n");
 	FbxDocumentInfo *sceneInfo = pScene->GetSceneInfo();
 	if (sceneInfo) {
 		FBXSDK_printf("title: %s\n", sceneInfo->mTitle.Buffer());
@@ -160,6 +161,8 @@ void FbxParser::displayMetaData(FbxScene *pScene)
 
 void FbxParser::displayGlobalLightSettings(FbxGlobalSettings *pGlobalSettings)
 {
+	FBXSDK_printf("\n\n---------------------Global Light Settings---------------------\n\n");
+
 	FbxColor color = pGlobalSettings->GetAmbientColor();
 	FBXSDK_printf("ambient color: \n(red)%lf, (green)%lf, (blue)%lf\n\n", color.mRed, color.mGreen, color.mBlue);
 }
@@ -182,6 +185,8 @@ void FbxParser::displayHierarchy(FbxNode *node, int depth)
 
 void FbxParser::displayHierarchy(FbxScene *pScene)
 {
+	FBXSDK_printf("\n\n---------------------------Hierarchy-------------------------------\n\n");
+
 	FbxNode *node = pScene->GetRootNode();
 	for (int i = 0; i != node->GetChildCount(); ++i) {
 		displayHierarchy(node->GetChild(i), 0);
@@ -190,6 +195,8 @@ void FbxParser::displayHierarchy(FbxScene *pScene)
 
 void FbxParser::displayContent(FbxScene *pScene)
 {
+	FBXSDK_printf("\n\n------------------------Node Content---------------------------\n\n");
+
 	FbxNode *node = pScene->GetRootNode();
 	if (node) {
 		for (int i = 0; i != node->GetChildCount(); ++i) {
@@ -413,7 +420,7 @@ void FbxParser::displayMesh(FbxNode *node)
 			}*/
 		}
 	}
-	glutDisplayFunc(displayModel);
+	//glutDisplayFunc(displayModel);
 	FBXSDK_printf("\n\n");
 }
 
