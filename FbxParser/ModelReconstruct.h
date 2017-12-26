@@ -18,7 +18,7 @@ public:
 	
 	
 	void displayModel();	//used for display the model
-	void display();		//called by a ModelReconstruct is not recommended since it's shall be called by displayModel
+	void display();		//called by a ModelReconstruct is not recommended since it's should be called by displayModel
 	void loop();			//used for glutMainLoop()
 
 private:

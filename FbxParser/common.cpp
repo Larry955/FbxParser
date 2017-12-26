@@ -28,3 +28,12 @@ void display3DVector(const char *prefix, FbxVector4 pValue)
 	vec += "\n";
 	FBXSDK_printf(vec);
 }
+
+void displayInfoOnce(const char *prefix, int index, FbxString info)
+{
+	if (index == 1) {
+		FbxString log("");
+		log += prefix + info + "\n";
+		FBXSDK_printf(log);
+	}
+}

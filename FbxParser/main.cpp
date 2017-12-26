@@ -1,8 +1,3 @@
-//#include <fbxsdk.h>
-//#include <gl\glut.h>
-//#include <vector>
-//#include <assert.h>
-
 #include "ModelReconstruct.h"
 
 int main(int argc, char **argv)

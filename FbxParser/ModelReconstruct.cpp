@@ -113,7 +113,7 @@ void ModelReconstruct::display()
 
 	for (int i = 0; i != polygonCount; ++i) {
 		int polygonSize = parser->getFbxMesh()->GetPolygonSize(i);
-		//FBXSDK_printf("polygonSize: %d\n", polygonSize);
+		FBXSDK_printf("polygonSize: %d\n", polygonSize);
 
 		vertexNormal.resize(polygonSize);
 
@@ -124,6 +124,7 @@ void ModelReconstruct::display()
 			caclNormal(parser->getFbxMesh(), vertexIndex, vertexCounter, polygonSize, vertexNormal[j]);
 			
 			polygonVertex.push_back(vec);
+			++vertexCounter;
 		}
 		
 		for (auto s : vertexNormal) {
@@ -135,7 +136,7 @@ void ModelReconstruct::display()
 			
 		}
 		
-		switch (parser->getFbxMesh()->GetPolygonSize(i))
+		switch (polygonSize)
 		{
 		case 3:
 			glEnable(GL_NORMALIZE);	//normalize
@@ -165,7 +166,7 @@ void ModelReconstruct::display()
 			FBXSDK_printf("undefined polygon size: %d\n", parser->getFbxMesh()->GetPolygonSize(i));
 			break;
 		}
-		++vertexCounter;
+	
 		polygonVertex.clear();
 		vertexNormal.clear();
 	}

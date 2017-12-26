@@ -364,7 +364,7 @@ void FbxParser::displayMesh(FbxNode *node)
 	controlPoints = pMesh->GetControlPoints();
 
 	FBXSDK_printf("\n\n---------------Control Points---------------------\n\n");
-	FBXSDK_printf("    Control Point Count %d\n", controlPoints);
+	FBXSDK_printf("    Control Point Count %d\n", controlPointsCount);
 	for (int i = 0; i != controlPointsCount; ++i) {
 		//FBXSDK_printf("    Control Point %d", i + 1);
 		//display3DVector("        Coordinates: ", controlPoints[i]);
@@ -392,12 +392,13 @@ void FbxParser::displayMesh(FbxNode *node)
 				switch (geoEleNormal->GetReferenceMode())
 				{
 				case FbxGeometryElement::eDirect:
-					/*FBXSDK_printf("eDirect\n");
-					display3DVector("direct array:\n", geoEleNormal->GetDirectArray().GetAt(i));
-					FBXSDK_printf("\n");*/
+					FBXSDK_printf("eDirect\n");
+					display3DVector("direct array:\n", geoEleNormal->GetDirectArray().GetAt(j));
+					FBXSDK_printf("\n");
+					//displayInfoOnce("eDirect", j);
 					break;
 				case FbxGeometryElement::eIndexToDirect:
-					//FBXSDK_printf("eIndexToDirect\n\n");
+					FBXSDK_printf("eIndexToDirect\n\n");
 					break;
 				default:
 					break;
