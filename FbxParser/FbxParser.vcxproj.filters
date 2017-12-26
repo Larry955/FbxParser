@@ -40,8 +40,13 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <Image Include="..\bunny.png">
+    <Image Include="C:\Users\Administrator\Desktop\reconstruct-bunny.png">
       <Filter>资源文件</Filter>
     </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="bunny.fbx">
+      <Filter>资源文件</Filter>
+    </None>
   </ItemGroup>
 </Project>

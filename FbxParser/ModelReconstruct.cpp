@@ -57,20 +57,20 @@ void ModelReconstruct::initModelSpace()
 	glClearColor(1.0, 1.0, 1.0, 1.0);
 
 	//used for at.fbx
-	glMatrixMode(GL_PROJECTION);
+	/*glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
 	gluPerspective(120, 1, 1, 80);
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
-	gluLookAt(0, -40, 50, 0, 60, 40, 0, 0, 1);
+	gluLookAt(0, -40, 50, 0, 60, 40, 0, 0, 1);*/
 
 	//for bunny.fbx
-	/*glMatrixMode(GL_PROJECTION);
+	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
 	gluPerspective(120, 1, 1, 80000);
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
-	gluLookAt(200, 250, -300, 0, 150, 0, 0, 1, 0.5);*/
+	gluLookAt(200, 250, -300, 0, 150, 0, 0, 1, 0.5);
 }
 
 void* mymalloc(size_t size)
@@ -113,7 +113,7 @@ void ModelReconstruct::display()
 
 	for (int i = 0; i != polygonCount; ++i) {
 		int polygonSize = parser->getFbxMesh()->GetPolygonSize(i);
-		FBXSDK_printf("polygonSize: %d\n", polygonSize);
+		//FBXSDK_printf("polygonSize: %d\n", polygonSize);
 
 		vertexNormal.resize(polygonSize);
 
@@ -133,7 +133,6 @@ void ModelReconstruct::display()
 				s.mData[2] == static_cast<FbxDouble>(0) &&
 				s.mData[3] == static_cast<FbxDouble>(0))
 				FBXSDK_printf("invalid normal\n");
-			
 		}
 		
 		switch (polygonSize)
@@ -194,6 +193,7 @@ void ModelReconstruct::caclNormal(FbxMesh *mesh, int vertexIndex, int vertexCoun
 		switch (vertexNormal->GetReferenceMode())
 		{
 		case FbxGeometryElement::eDirect:
+			vertexNormal->GetDirectArray().GetCount();
 			normal = vertexNormal->GetDirectArray().GetAt(vertexCounter).mData;
 			break;
 		case FbxGeometryElement::eIndexToDirect:
@@ -210,6 +210,7 @@ void ModelReconstruct::caclNormal(FbxMesh *mesh, int vertexIndex, int vertexCoun
 		switch (vertexNormal->GetReferenceMode())
 		{
 		case FbxGeometryElement::eDirect:
+			//c = vertexNormal->GetDirectArray().GetCount();
 			normal = vertexNormal->GetDirectArray().GetAt(vertexCounter).mData;
 			/*if (polygonSize == 3) {
 			normal.mData[0] = static_cast<float>(vertexNormal->GetDirectArray().GetAt(vertexCounter).mData[0]);

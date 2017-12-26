@@ -82,7 +82,10 @@
     <ClInclude Include="ModelReconstruct.h" />
   </ItemGroup>
   <ItemGroup>
-    <Image Include="..\bunny.png" />
+    <Image Include="C:\Users\Administrator\Desktop\reconstruct-bunny.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="bunny.fbx" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

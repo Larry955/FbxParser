@@ -2,7 +2,7 @@
 
 int main(int argc, char **argv)
 {
-	FbxParser *parser = new FbxParser(FbxString("cube"));
+	FbxParser *parser = new FbxParser(FbxString("bunny"));
 	bool loadResult = parser->loadScene();
 	if (loadResult) {
 		parser->displayGlobalLightSettings(&parser->getFbxScene()->GetGlobalSettings());
