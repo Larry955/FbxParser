@@ -57,20 +57,20 @@ void ModelReconstruct::initModelSpace()
 	glClearColor(1.0, 1.0, 1.0, 1.0);
 
 	//used for at.fbx
-	/*glMatrixMode(GL_PROJECTION);
+	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
 	gluPerspective(120, 1, 1, 80);
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
-	gluLookAt(0, -40, 50, 0, 60, 40, 0, 0, 1);*/
+	gluLookAt(0, -40, 50, 0, 60, 40, 0, 0, 1);
 
 	//for bunny.fbx
-	glMatrixMode(GL_PROJECTION);
+	/*glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
 	gluPerspective(120, 1, 1, 80000);
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
-	gluLookAt(200, 250, -300, 0, 150, 0, 0, 1, 0.5);
+	gluLookAt(200, 250, -300, 0, 150, 0, 0, 1, 0.5);*/
 }
 
 void* mymalloc(size_t size)
@@ -122,9 +122,19 @@ void ModelReconstruct::display()
 			FbxVector4 vec = (parser->getFbxVector4())[vertexIndex];
 			//display3DVector("vec: ", vec);
 			caclNormal(parser->getFbxMesh(), vertexIndex, vertexCounter, polygonSize, vertexNormal[j]);
+			
 			polygonVertex.push_back(vec);
 		}
-
+		
+		for (auto s : vertexNormal) {
+			if (s.mData[0] == static_cast<FbxDouble>(0) && 
+				s.mData[1] == static_cast<FbxDouble>(0) &&
+				s.mData[2] == static_cast<FbxDouble>(0) &&
+				s.mData[3] == static_cast<FbxDouble>(0))
+				FBXSDK_printf("invalid normal\n");
+			
+		}
+		
 		switch (parser->getFbxMesh()->GetPolygonSize(i))
 		{
 		case 3:

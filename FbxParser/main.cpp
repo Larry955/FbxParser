@@ -47,7 +47,7 @@
 
 int main(int argc, char **argv)
 {
-	FbxParser *parser = new FbxParser(FbxString("G:\\FBX_SDK\\FBX_MODEL\\bunny.fbx"));
+	FbxParser *parser = new FbxParser(FbxString("cube"));
 	bool loadResult = parser->loadScene();
 	if (loadResult) {
 		parser->displayGlobalLightSettings(&parser->getFbxScene()->GetGlobalSettings());

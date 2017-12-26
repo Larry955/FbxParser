@@ -45,7 +45,7 @@ bool FbxParser::loadScene()
 	FbxImporter *importer = FbxImporter::Create(pManager, "");
 
 	//initialize the importer by providing a file name
-	const bool imorterStatus = importer->Initialize(fbxFile, -1, pManager->GetIOSettings());
+	const bool imorterStatus = importer->Initialize(fbxFile + ".fbx", -1, pManager->GetIOSettings());
 	if (!imorterStatus) {
 		FBXSDK_printf("error: initialize importer failed\n");
 		return status;
@@ -364,6 +364,7 @@ void FbxParser::displayMesh(FbxNode *node)
 	controlPoints = pMesh->GetControlPoints();
 
 	FBXSDK_printf("\n\n---------------Control Points---------------------\n\n");
+	FBXSDK_printf("    Control Point Count %d\n", controlPoints);
 	for (int i = 0; i != controlPointsCount; ++i) {
 		//FBXSDK_printf("    Control Point %d", i + 1);
 		//display3DVector("        Coordinates: ", controlPoints[i]);
@@ -396,7 +397,7 @@ void FbxParser::displayMesh(FbxNode *node)
 					FBXSDK_printf("\n");*/
 					break;
 				case FbxGeometryElement::eIndexToDirect:
-					FBXSDK_printf("eIndexToDirect\n\n");
+					//FBXSDK_printf("eIndexToDirect\n\n");
 					break;
 				default:
 					break;
