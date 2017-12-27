@@ -38,7 +38,7 @@ void ModelReconstruct::initModelSpace()
 	glLightfv(GL_LIGHT0, GL_POSITION, light0_position);
 
 	GLfloat light1_ambient[] = { 1.0, 0.2, 0.2, 1.0 };
-	GLfloat light1_diffuse[] = { 1.0, 0.0, 0.0, 1.0 };
+	GLfloat light1_diffuse[] = { 0.0, 1.0, 0.0, 1.0 };
 	GLfloat light1_specular[] = { 1.0, 0.6, 0.6, 1.0 };
 	GLfloat light1_position[] = { 1.0, 1.0, 1.0, 0.0 };
 	GLfloat spot_direction[] = { 1.0, 1.0, -1.0 };
@@ -57,20 +57,20 @@ void ModelReconstruct::initModelSpace()
 	glClearColor(1.0, 1.0, 1.0, 1.0);
 
 	//used for at.fbx
-	/*glMatrixMode(GL_PROJECTION);
+	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
 	gluPerspective(120, 1, 1, 80);
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
-	gluLookAt(0, -40, 50, 0, 60, 40, 0, 0, 1);*/
+	gluLookAt(0, -40, 50, 0, 60, 40, 0, 0, 1);
 
 	//for bunny.fbx
-	glMatrixMode(GL_PROJECTION);
+	/*glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
 	gluPerspective(120, 1, 1, 80000);
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
-	gluLookAt(200, 250, -300, 0, 150, 0, 0, 1, 0.5);
+	gluLookAt(200, 250, -300, 0, 150, 0, 0, 1, 0.5);*/
 }
 
 void* mymalloc(size_t size)

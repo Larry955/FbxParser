@@ -380,7 +380,7 @@ void FbxParser::displayMesh(FbxNode *node)
 					FBXSDK_printf("eDirect\n\n");
 					break;
 				case FbxGeometryElement::eIndexToDirect:
-					FBXSDK_printf("eIndexToDirect\n\n");
+					//FBXSDK_printf("eIndexToDirect\n\n");
 					break;
 				default:
 					FBXSDK_printf("default element\n\n");
@@ -392,13 +392,13 @@ void FbxParser::displayMesh(FbxNode *node)
 				switch (geoEleNormal->GetReferenceMode())
 				{
 				case FbxGeometryElement::eDirect:
-					FBXSDK_printf("eDirect\n");
+					/*FBXSDK_printf("eDirect\n");
 					display3DVector("direct array:\n", geoEleNormal->GetDirectArray().GetAt(j));
-					FBXSDK_printf("\n");
+					FBXSDK_printf("\n");*/
 					//displayInfoOnce("eDirect", j);
 					break;
 				case FbxGeometryElement::eIndexToDirect:
-					FBXSDK_printf("eIndexToDirect\n\n");
+					//FBXSDK_printf("eIndexToDirect\n\n");
 					break;
 				default:
 					break;
