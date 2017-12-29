@@ -32,13 +32,13 @@ void ModelReconstruct::initModelSpace()
 	glMaterialfv(GL_FRONT, GL_SPECULAR, mat_specular);
 	glMaterialfv(GL_FRONT, GL_SHININESS, mat_shininess);
 
-	GLfloat light0_diffuse[] = { 1.0, 0.0, 0.0, 1.0 };
+	GLfloat light0_diffuse[] = { 1.0, 1.0, 0.0, 1.0 };
 	GLfloat light0_position[] = { 1.0, 1.0, 1.0, 0.0 };
 	glLightfv(GL_LIGHT0, GL_DIFFUSE, light0_diffuse);
 	glLightfv(GL_LIGHT0, GL_POSITION, light0_position);
 
-	GLfloat light1_ambient[] = { 1.0, 0.2, 0.2, 1.0 };
-	GLfloat light1_diffuse[] = { 0.0, 1.0, 0.0, 1.0 };
+	/*GLfloat light1_ambient[] = { 0.0, 0.2, 0.2, 1.0 };
+	GLfloat light1_diffuse[] = { 1.0, 1.0, 0.0, 1.0 };
 	GLfloat light1_specular[] = { 1.0, 0.6, 0.6, 1.0 };
 	GLfloat light1_position[] = { 1.0, 1.0, 1.0, 0.0 };
 	GLfloat spot_direction[] = { 1.0, 1.0, -1.0 };
@@ -48,11 +48,11 @@ void ModelReconstruct::initModelSpace()
 	glLightfv(GL_LIGHT1, GL_SPECULAR, light1_specular);
 	glLightfv(GL_LIGHT1, GL_POSITION, light1_position);
 	glLightf(GL_LIGHT1, GL_SPOT_CUTOFF, 30.0);
-	glLightfv(GL_LIGHT1, GL_SPOT_DIRECTION, spot_direction);
+	glLightfv(GL_LIGHT1, GL_SPOT_DIRECTION, spot_direction);*/
 
 	glEnable(GL_LIGHTING);
 	glEnable(GL_LIGHT0);
-	glEnable(GL_LIGHT1);
+	//glEnable(GL_LIGHT1);
 	glEnable(GL_DEPTH_TEST);
 	glClearColor(1.0, 1.0, 1.0, 1.0);
 
@@ -110,6 +110,8 @@ void ModelReconstruct::display()
 	FBXSDK_printf("\n\n---------------Polygon Points---------------------\n\n");
 	FBXSDK_printf("polygon points count %d\n", polygonCount);
 
+	FBXSDK_printf("UV layer count: %d\n", parser->getFbxMesh()->GetUVLayerCount());
+	FBXSDK_printf("UV texture count: %d\n", parser->getFbxMesh()->GetTextureUVCount());
 
 	for (int i = 0; i != polygonCount; ++i) {
 		int polygonSize = parser->getFbxMesh()->GetPolygonSize(i);
