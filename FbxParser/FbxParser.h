@@ -19,6 +19,7 @@ public:
 	
 	FbxManager* getFbxManager(){ return pManager; }	//get FbxManager
 	FbxScene* getFbxScene(){ return pScene; }	//get FbxScene
+	FbxString getFbxFileName() { return fbxFile; }		//get file name
 	FbxVector4* getFbxVector4(){ return controlPoints; }	//get control points of the fbx model
 	FbxMesh* getFbxMesh(){ return pMesh; }		//get FbxMesh
 	void setFbxMesh(FbxMesh *mesh){ this->pMesh = pMesh; }	//set FbxMesh, it's useless actually
