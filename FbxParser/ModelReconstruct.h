@@ -3,6 +3,7 @@
 
 #include <gl\glut.h>
 #include "FbxParser.h"
+#include "RGBImgStructure.h"
 
 class ModelReconstruct;
 static ModelReconstruct *currModelRec;
@@ -15,6 +16,7 @@ static GLfloat zRot = 0.0f;
 static GLfloat xScale = 1.0f;
 static GLfloat yScale = 1.0f;
 static GLfloat zScale = 1.0f;
+
 
 class ModelReconstruct{
 public:
@@ -38,7 +40,12 @@ private:
 	int argc;
 	char **argv;
 	FbxParser *parser;
+	RGBImgStructure *textureImage;
 
+	bool loadGLTextures();
+	RGBImgStructure* loadImageFile(const char* fileName);
+
+	//void textureMapping();
 	void initModelSpace();
 	void resetTransformFactor();
 	void caclNormal(FbxMesh *mesh, int vertexIndex, int vertexCounter, int polygonSize, FbxVector4 &normal);

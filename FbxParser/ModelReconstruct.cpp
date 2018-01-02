@@ -1,8 +1,12 @@
 #include "ModelReconstruct.h"
+#include <gl\GLAux.h>
 #include <vector>
+#include <cstdio>
 using std::vector;
 
-ModelReconstruct::ModelReconstruct(FbxParser *parser, int argc, char **argv) :parser(parser), argc(argc), argv(argv)
+GLuint  textureArr[1];         // Storage For One Texture ( NEW )  
+
+ModelReconstruct::ModelReconstruct(FbxParser *parser, int argc, char **argv) :parser(parser), argc(argc), argv(argv), textureImage(nullptr)
 {
 
 	initModelSpace();
@@ -32,7 +36,7 @@ void ModelReconstruct::initModelSpace()
 	glMaterialfv(GL_FRONT, GL_SPECULAR, mat_specular);
 	glMaterialfv(GL_FRONT, GL_SHININESS, mat_shininess);
 
-	GLfloat light0_diffuse[] = { 0.0, 1.0, 0.0, 1.0 };
+	GLfloat light0_diffuse[] = { 1.0, 0.0, 0.0, 1.0 };
 	GLfloat light0_position[] = { 1.0, 1.0, 1.0, 0.0 };
 	glLightfv(GL_LIGHT0, GL_DIFFUSE, light0_diffuse);
 	glLightfv(GL_LIGHT0, GL_POSITION, light0_position);
@@ -85,31 +89,7 @@ void ModelReconstruct::initModelSpace()
 	}
 	
 
-	/*glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	gluPerspective(120, 1, 1, 80000);
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-	gluLookAt(200, 250, -300, 0, 150, 0, 0, 1, 0.5);*/
-}
-
-void* mymalloc(size_t size)
-{
-	printf("mymalloc %d\n", size);
-	return malloc(size);
-}
-
-template <typename F>
-void* fkmemfunccastvoid(F f)
-{
-	void * p = mymalloc(sizeof(F));
-	new(p) F(f);
-	return p;
-}
-
-template <typename T>
-void fun2(T *obp, void (T::*p)()){
-	(obp->*p)();
+	loadGLTextures();
 }
 
 void displayCallBack()
@@ -120,10 +100,11 @@ void displayCallBack()
 void ModelReconstruct::display()
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	FBXSDK_printf("zRot: %d\n", zRot);
 	glRotatef(xRot, 1.0, 0.0, 0.0);
 	glRotatef(zRot, 0.0, 0.0, 1.0);
 	glScalef(xScale, yScale, zScale);
+	glBindTexture(GL_TEXTURE_2D, textureArr[0]);
+
 
 	//Polygon Points
 	int polygonCount = parser->getFbxMesh()->GetPolygonCount();
@@ -197,6 +178,7 @@ void ModelReconstruct::display()
 	FBXSDK_printf("UV texture count: %d\n", parser->getFbxMesh()->GetTextureUVCount());	//return 1970 in run.fbx
 	FbxGeometryElementUV *uv = parser->getFbxMesh()->GetElementUV(0);
 	FBXSDK_printf("name: %s\n", uv->GetName());	//return UV_channel_1
+
 	glFlush();
 	glutSwapBuffers();
 }
@@ -363,4 +345,66 @@ void ModelReconstruct::resetTransformFactor()
 	xScale = 1.0;
 	yScale = 1.0;
 	zScale = 1.0;
+}
+
+bool ModelReconstruct::loadGLTextures()
+{
+	bool status = false;
+	RGBImgStructure *textureImage[1];	//create storage space for textures
+	memset(textureImage, 0, sizeof(RGBImgStructure*) * 1);	//init the pointer to NULL
+	FbxString fileName = parser->getTextureFileName();
+	if (isNotEmpty(fileName)) {
+		textureImage[0] = loadImageFile(fileName);	//get texture file
+	}
+	if (textureImage[0]) {	
+		glGenTextures(1, &textureArr[0]);		//create the texture
+
+		glBindTexture(GL_TEXTURE_2D, textureArr[0]);
+		glTexImage2D(GL_TEXTURE_2D, 0, 3, textureImage[0]->width, textureImage[0]->height, 0, GL_RGB, GL_UNSIGNED_BYTE, textureImage[0]->data);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+		if (textureImage[0]->data) {
+			FBXSDK_printf("ss%s\n", textureImage[0]->data);
+			free(textureImage[0]->data);
+		}
+		free(textureImage[0]);
+
+		glEnable(GL_TEXTURE_2D);
+		glShadeModel(GL_SMOOTH);
+		glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+		glClearDepth(1.0f);
+		glEnable(GL_DEPTH_TEST);
+		glDepthFunc(GL_LEQUAL);
+		glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
+
+		status = true;
+	}
+	return status;
+}
+
+RGBImgStructure* ModelReconstruct::loadImageFile(const char* fileName)
+{
+	textureImage = (RGBImgStructure*)malloc(sizeof(RGBImgStructure));
+	textureImage->width = 0;	//initialize
+	textureImage->height = 0;
+	textureImage->data = nullptr;
+
+	FILE* imageFile = nullptr;
+	unsigned long size = 0;
+	imageFile = fopen(fileName, "rb");		//binary file
+
+	fseek(imageFile, 18, SEEK_SET);
+	fread(&(textureImage->width), 4, 1, imageFile);
+	fread(&(textureImage->height), 4, 1, imageFile);
+	fseek(imageFile, 0, SEEK_END);
+	size = ftell(imageFile) - 54;
+
+	textureImage->data = (unsigned char*)malloc(size);
+	memset(textureImage->data, 0, size);
+	fseek(imageFile, 54, SEEK_SET);
+	fread(textureImage->data, size, 1, imageFile);
+
+	fclose(imageFile);
+	return textureImage;
 }

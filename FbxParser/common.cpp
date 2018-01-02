@@ -37,3 +37,8 @@ void displayInfoOnce(const char *prefix, int index, FbxString info)
 		FBXSDK_printf(log);
 	}
 }
+
+bool isNotEmpty(FbxString str)
+{
+	return (str == nullptr || str == FbxString("")) ? false : true;
+}

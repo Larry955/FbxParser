@@ -21,8 +21,12 @@ public:
 	FbxScene* getFbxScene(){ return pScene; }	//get FbxScene
 	FbxString getFbxFileName() { return fbxFile; }		//get file name
 	FbxVector4* getFbxVector4(){ return controlPoints; }	//get control points of the fbx model
+	
 	FbxMesh* getFbxMesh(){ return pMesh; }		//get FbxMesh
 	void setFbxMesh(FbxMesh *mesh){ this->pMesh = pMesh; }	//set FbxMesh, it's useless actually
+
+	void setTextureFileName(FbxString texFile){ textureFile = texFile; }	
+	FbxString getTextureFileName() { return textureFile; }
 
 	bool loadScene();		//load scene,return false if failed
 	void displayMetaData(FbxScene *pScene);		//display meta data
@@ -36,6 +40,7 @@ private:
 	FbxScene *pScene;
 	FbxMesh *pMesh;
 	FbxString fbxFile;
+	FbxString textureFile;
 
 	FbxVector4 *controlPoints;
 	FbxVector4 *polygonPoints;

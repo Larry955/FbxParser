@@ -2,7 +2,7 @@
 #include <assert.h>
 
 FbxParser::FbxParser(FbxString fbxFile) :
-pManager(nullptr), pScene(nullptr), pMesh(nullptr), fbxFile(fbxFile), controlPoints()
+pManager(nullptr), pScene(nullptr), pMesh(nullptr), fbxFile(fbxFile), textureFile(""), controlPoints(), polygonPoints()
 {
 	initFbxObjects();
 }
@@ -261,6 +261,7 @@ void FbxParser::displayTexture(FbxNode *node)
 							FbxFileTexture *fileTexture = FbxCast<FbxFileTexture>(layeredTexture->GetSrcObject<FbxFileTexture>(c));
 							const char *textureName = fileTexture->GetFileName();
 							FBXSDK_printf("texture name: %s\n", textureName);
+							setTextureFileName(FbxString(textureName));
 						}
 					}
 				}
@@ -271,6 +272,7 @@ void FbxParser::displayTexture(FbxNode *node)
 						FbxFileTexture *fileTexture = FbxCast<FbxFileTexture>(prop.GetSrcObject<FbxFileTexture>(i));
 						const char *textureName = fileTexture->GetFileName();
 						FBXSDK_printf("texture name: %s\n", textureName);
+						setTextureFileName(FbxString(textureName));
 					}
 				}
 			}
