@@ -76,6 +76,7 @@
     <ClCompile Include="FbxParser.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="ModelReconstruct.cpp" />
+    <ClCompile Include="RGBImgStructure.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="common.h" />

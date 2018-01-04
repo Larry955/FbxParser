@@ -40,10 +40,8 @@ private:
 	int argc;
 	char **argv;
 	FbxParser *parser;
-	RGBImgStructure *textureImage;
 
 	bool loadGLTextures();
-	RGBImgStructure* loadImageFile(const char* fileName);
 
 	//void textureMapping();
 	void initModelSpace();

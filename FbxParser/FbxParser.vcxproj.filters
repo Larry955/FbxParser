@@ -27,6 +27,9 @@
     <ClCompile Include="common.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="RGBImgStructure.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="FbxParser.h">

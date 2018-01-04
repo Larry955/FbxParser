@@ -6,7 +6,7 @@ using std::vector;
 
 GLuint  textureArr[1];         // Storage For One Texture ( NEW )  
 
-ModelReconstruct::ModelReconstruct(FbxParser *parser, int argc, char **argv) :parser(parser), argc(argc), argv(argv), textureImage(nullptr)
+ModelReconstruct::ModelReconstruct(FbxParser *parser, int argc, char **argv) :parser(parser), argc(argc), argv(argv)
 {
 
 	initModelSpace();
@@ -37,11 +37,11 @@ void ModelReconstruct::initModelSpace()
 	glMaterialfv(GL_FRONT, GL_SHININESS, mat_shininess);
 
 	GLfloat light0_diffuse[] = { 1.0, 0.0, 0.0, 1.0 };
-	GLfloat light0_position[] = { 1.0, 1.0, 1.0, 0.0 };
+	GLfloat light0_position[] = { 1.0, 0.0, 1.0, 0.0 };
 	glLightfv(GL_LIGHT0, GL_DIFFUSE, light0_diffuse);
 	glLightfv(GL_LIGHT0, GL_POSITION, light0_position);
 
-	GLfloat light1_ambient[] = { 0.0, 0.2, 0.2, 1.0 };
+	/*GLfloat light1_ambient[] = { 0.0, 0.2, 0.2, 1.0 };
 	GLfloat light1_diffuse[] = { 1.0, 0.0, 0.0, 1.0 };
 	GLfloat light1_specular[] = { 1.0, 0.0, 0.6, 1.0 };
 	GLfloat light1_position[] = { 1.0, 0.0, 1.0, 0.0 };
@@ -52,11 +52,11 @@ void ModelReconstruct::initModelSpace()
 	glLightfv(GL_LIGHT1, GL_SPECULAR, light1_specular);
 	glLightfv(GL_LIGHT1, GL_POSITION, light1_position);
 	glLightf(GL_LIGHT1, GL_SPOT_CUTOFF, 30.0);
-	glLightfv(GL_LIGHT1, GL_SPOT_DIRECTION, spot_direction);
+	glLightfv(GL_LIGHT1, GL_SPOT_DIRECTION, spot_direction);*/
 
 	glEnable(GL_LIGHTING);
 	glEnable(GL_LIGHT0);
-	glEnable(GL_LIGHT1);
+	//glEnable(GL_LIGHT1);
 	glEnable(GL_DEPTH_TEST);
 	glClearColor(1.0, 1.0, 1.0, 1.0);
 
@@ -353,8 +353,25 @@ bool ModelReconstruct::loadGLTextures()
 	RGBImgStructure *textureImage[1];	//create storage space for textures
 	memset(textureImage, 0, sizeof(RGBImgStructure*) * 1);	//init the pointer to NULL
 	FbxString fileName = parser->getTextureFileName();
+
 	if (isNotEmpty(fileName)) {
-		textureImage[0] = loadImageFile(fileName);	//get texture file
+		switch (getFileSuffix(fileName.Buffer()))
+		{
+		case eTextureType::TGA:
+			textureImage[0] = loadTGA(fileName.Buffer());
+			break;
+		case eTextureType::DDS:
+			textureImage[0] = loadDDS(fileName.Buffer());
+			break;
+		case eTextureType::BMP:
+			textureImage[0] = loadBMP(fileName.Buffer());
+			break;
+		case eTextureType::UNKNOWN:
+			FBXSDK_printf("erro!\n\n");
+			break;
+		default:
+			break;
+		}
 	}
 	if (textureImage[0]) {	
 		glGenTextures(1, &textureArr[0]);		//create the texture
@@ -383,28 +400,28 @@ bool ModelReconstruct::loadGLTextures()
 	return status;
 }
 
-RGBImgStructure* ModelReconstruct::loadImageFile(const char* fileName)
-{
-	textureImage = (RGBImgStructure*)malloc(sizeof(RGBImgStructure));
-	textureImage->width = 0;	//initialize
-	textureImage->height = 0;
-	textureImage->data = nullptr;
-
-	FILE* imageFile = nullptr;
-	unsigned long size = 0;
-	imageFile = fopen(fileName, "rb");		//binary file
-
-	fseek(imageFile, 18, SEEK_SET);
-	fread(&(textureImage->width), 4, 1, imageFile);
-	fread(&(textureImage->height), 4, 1, imageFile);
-	fseek(imageFile, 0, SEEK_END);
-	size = ftell(imageFile) - 54;
-
-	textureImage->data = (unsigned char*)malloc(size);
-	memset(textureImage->data, 0, size);
-	fseek(imageFile, 54, SEEK_SET);
-	fread(textureImage->data, size, 1, imageFile);
-
-	fclose(imageFile);
-	return textureImage;
-}
+//RGBImgStructure* ModelReconstruct::loadImageFile(const char* fileName)
+//{
+//	textureImage = (RGBImgStructure*)malloc(sizeof(RGBImgStructure));
+//	textureImage->width = 0;	//initialize
+//	textureImage->height = 0;
+//	textureImage->data = nullptr;
+//
+//	FILE* imageFile = nullptr;
+//	unsigned long size = 0;
+//	imageFile = fopen(fileName, "rb");		//binary file
+//
+//	fseek(imageFile, 18, SEEK_SET);
+//	fread(&(textureImage->width), 4, 1, imageFile);
+//	fread(&(textureImage->height), 4, 1, imageFile);
+//	fseek(imageFile, 0, SEEK_END);
+//	size = ftell(imageFile) - 54;
+//
+//	textureImage->data = (unsigned char*)malloc(size);
+//	memset(textureImage->data, 0, size);
+//	fseek(imageFile, 54, SEEK_SET);
+//	fread(textureImage->data, size, 1, imageFile);
+//
+//	fclose(imageFile);
+//	return textureImage;
+//}
