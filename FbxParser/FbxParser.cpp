@@ -206,6 +206,7 @@ void FbxParser::displayContent(FbxScene *pScene)
 	else {
 		FBXSDK_printf("null node!\n");
 	}
+	displayTexture(pScene);
 }
 
 void FbxParser::displayContent(FbxNode *node)
@@ -276,6 +277,21 @@ void FbxParser::displayTexture(FbxNode *node)
 					}
 				}
 			}
+		}
+	}
+}
+
+void FbxParser::displayTexture(FbxScene *pScene)
+{
+	const int textureCount = pScene->GetTextureCount();
+	for (int textureIndex = 0; textureIndex != textureCount; ++textureIndex) {
+		FbxTexture *pTexture = pScene->GetTexture(textureIndex);
+		FbxFileTexture *pFileTexture = FbxCast<FbxFileTexture>(pTexture);
+
+		if (pFileTexture && !pFileTexture->GetUserDataPtr()) {
+			//try to load the texture from absolute path
+			const FbxString fileName = pFileTexture->GetFileName();
+
 		}
 	}
 }

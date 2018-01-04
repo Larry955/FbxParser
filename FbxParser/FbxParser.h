@@ -55,6 +55,7 @@ private:
 	void displaySkeleton(FbxNode *node);
 	void displayMesh(FbxNode *node);
 	void displayTexture(FbxNode *node);
+	void displayTexture(FbxScene *pScene);
 };
  
 #endif 
