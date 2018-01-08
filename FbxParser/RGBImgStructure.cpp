@@ -5,7 +5,10 @@
 #include <string>
 #include <cctype>
 #include <cstdio>
+#include <iostream>
 
+#include <Magick++.h>
+using namespace Magick;
 
 eTextureType getFileSuffix(const char *fileName)
 {
@@ -93,10 +96,24 @@ RGBImgStructure* loadTGA(const char* fileName)
 	return textureImage;
 }
 
-RGBImgStructure* loadDDS(const char *fileName)
-{
-	return nullptr;
-}
+//bool loadDDS(const char *fileName)
+//{
+//	RGBImgStructure* textureImage;
+//	textureImage = (RGBImgStructure*)malloc(sizeof(RGBImgStructure));
+//	textureImage->width = 0;	//initialize
+//	textureImage->height = 0;
+//	textureImage->data = nullptr;
+//	
+//	FILE* imageFile = nullptr;
+//	unsigned long size = 0;
+//	imageFile = fopen(fileName, "rb");		//binary file
+//
+//	if (!imageFile) {
+//		std::cerr << "error: open " << fileName << " failed\n\n" << std::endl;
+//		return nullptr;
+//	}
+//
+//}
 
 RGBImgStructure* loadBMP(const char *fileName)
 {
@@ -123,4 +140,37 @@ RGBImgStructure* loadBMP(const char *fileName)
 
 	fclose(imageFile);
 	return textureImage;
+}
+
+RGBImgStructure* loadTextureImg(const char *fileName,char **argv)
+{
+	RGBImgStructure* textureImage;
+	textureImage = (RGBImgStructure*)malloc(sizeof(RGBImgStructure));
+	textureImage->width = 0;	//initialize
+	textureImage->height = 0;
+	textureImage->data = nullptr;
+
+
+	InitializeMagick(*argv);
+	try {
+		Image img(fileName);
+		textureImage->width = img.size().width();
+		textureImage->height = img.size().height();
+		/*Pixels pixelsCache(img);
+		Quantum* pixels;
+		pixels = pixelsCache.get(0, 0, img.columns(), img.rows());*/
+
+		Blob blob;
+		img.write(&blob);
+		size_t size = blob.length() + 1;
+		textureImage->data = (unsigned char*)malloc(size * sizeof(char));
+		
+		memcpy(textureImage->data, blob.data(), size);
+		textureImage->data[size - 1] = '\0';
+		return textureImage;
+	}
+	catch (Exception &error) {
+		std::cerr << "error: " << error.what() << std::endl;
+		return nullptr;
+	}
 }

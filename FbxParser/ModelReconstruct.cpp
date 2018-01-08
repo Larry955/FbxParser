@@ -89,7 +89,7 @@ void ModelReconstruct::initModelSpace()
 	}
 	
 
-	//loadGLTextures();
+	loadGLTextures();
 }
 
 void displayCallBack()
@@ -353,16 +353,17 @@ bool ModelReconstruct::loadGLTextures()
 	RGBImgStructure *textureImage[1];	//create storage space for textures
 	memset(textureImage, 0, sizeof(RGBImgStructure*) * 1);	//init the pointer to NULL
 	FbxString fileName = parser->getTextureFileName();
-
+	
+	
 	if (isNotEmpty(fileName)) {
-		switch (getFileSuffix(fileName.Buffer()))
+		textureImage[0] = loadTextureImg(fileName.Buffer(),argv);
+		/*switch (getFileSuffix(fileName.Buffer()))
 		{
 		case eTextureType::TGA:
 			textureImage[0] = loadTGA(fileName.Buffer());
 			break;
 		case eTextureType::DDS:
-			textureImage[0] = loadDDS(fileName.Buffer());
-			break;
+			return loadDDS(fileName.Buffer());
 		case eTextureType::BMP:
 			textureImage[0] = loadBMP(fileName.Buffer());
 			break;
@@ -371,9 +372,10 @@ bool ModelReconstruct::loadGLTextures()
 			break;
 		default:
 			break;
-		}
+		}*/
 	}
 	if (textureImage[0]) {	
+		size_t len = strlen((char*)textureImage[0]->data);
 		glGenTextures(1, &textureArr[0]);		//create the texture
 
 		glBindTexture(GL_TEXTURE_3D, textureArr[0]);
@@ -382,7 +384,7 @@ bool ModelReconstruct::loadGLTextures()
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
 		if (textureImage[0]->data) {
-			FBXSDK_printf("ss%s\n", textureImage[0]->data);
+			//FBXSDK_printf("ss%s\n", textureImage[0]->data);
 			free(textureImage[0]->data);
 		}
 		free(textureImage[0]);

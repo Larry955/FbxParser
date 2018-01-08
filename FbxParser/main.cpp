@@ -1,8 +1,38 @@
 #include "ModelReconstruct.h"
 
+#include <Magick++.h>
+using namespace Magick;
+
+#include <iostream>
+using namespace std;
+
 int main(int argc, char **argv)
 {
-	FbxParser *parser = new FbxParser(FbxString("run"));
+	/*InitializeMagick(*argv);
+	try {
+		Image image_temp("G:\\FBX_SDK\\FbxParser\\FbxParser\\run.fbm\\E16011.tga");
+		cout << "image columns: " << image_temp.columns() << endl;
+		cout << "image rows: " << image_temp.rows() << endl;
+		cout << "image height: " << image_temp.size().height() << endl;
+		cout << "image width: " << image_temp.size().width() << endl;
+	}
+	catch (Exception &error) {
+		cerr << "error: " << error.what() << endl;
+		system("pause");
+	}*/
+	/*try{
+		image.read("logo:");
+		image.crop(Geometry(100, 100, 100, 100));
+		image.write("logo.png");
+	}
+	catch (Exception &error){
+		cerr << "error: " << error.what() << endl;
+		system("pause");
+	}*/
+	
+
+
+	FbxParser *parser = new FbxParser(FbxString("lt"));
 	bool loadResult = parser->loadScene();
 	if (loadResult) {
 		parser->displayGlobalLightSettings(&parser->getFbxScene()->GetGlobalSettings());

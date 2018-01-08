@@ -5,6 +5,7 @@
 #include "FbxParser.h"
 #include "RGBImgStructure.h"
 
+
 class ModelReconstruct;
 static ModelReconstruct *currModelRec;
 
