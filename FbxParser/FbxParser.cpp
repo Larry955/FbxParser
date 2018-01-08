@@ -198,15 +198,16 @@ void FbxParser::displayContent(FbxScene *pScene)
 	FBXSDK_printf("\n\n------------------------Node Content---------------------------\n\n");
 
 	FbxNode *node = pScene->GetRootNode();
+	int childCount = node->GetChildCount();
 	if (node) {
-		for (int i = 0; i != node->GetChildCount(); ++i) {
+		for (int i = 0; i != childCount; ++i) {
 			displayContent(node->GetChild(i));
 		}
 	}
 	else {
 		FBXSDK_printf("null node!\n");
 	}
-	displayTexture(pScene);
+	//displayTexture(pScene);
 }
 
 void FbxParser::displayContent(FbxNode *node)

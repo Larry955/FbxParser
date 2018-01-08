@@ -89,7 +89,7 @@ void ModelReconstruct::initModelSpace()
 	}
 	
 
-	loadGLTextures();
+	//loadGLTextures();
 }
 
 void displayCallBack()
@@ -103,7 +103,7 @@ void ModelReconstruct::display()
 	glRotatef(xRot, 1.0, 0.0, 0.0);
 	glRotatef(zRot, 0.0, 0.0, 1.0);
 	glScalef(xScale, yScale, zScale);
-	glBindTexture(GL_TEXTURE_2D, textureArr[0]);
+	glBindTexture(GL_TEXTURE_3D, textureArr[0]);
 
 
 	//Polygon Points
@@ -376,10 +376,10 @@ bool ModelReconstruct::loadGLTextures()
 	if (textureImage[0]) {	
 		glGenTextures(1, &textureArr[0]);		//create the texture
 
-		glBindTexture(GL_TEXTURE_2D, textureArr[0]);
-		glTexImage2D(GL_TEXTURE_2D, 0, 3, textureImage[0]->width, textureImage[0]->height, 0, GL_RGB, GL_UNSIGNED_BYTE, textureImage[0]->data);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glBindTexture(GL_TEXTURE_3D, textureArr[0]);
+		glTexImage2D(GL_TEXTURE_3D, 0, 3, textureImage[0]->width, textureImage[0]->height, 0, GL_RGB, GL_UNSIGNED_BYTE, textureImage[0]->data);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
 		if (textureImage[0]->data) {
 			FBXSDK_printf("ss%s\n", textureImage[0]->data);
@@ -387,7 +387,7 @@ bool ModelReconstruct::loadGLTextures()
 		}
 		free(textureImage[0]);
 
-		glEnable(GL_TEXTURE_2D);
+		glEnable(GL_TEXTURE_3D);
 		glShadeModel(GL_SMOOTH);
 		glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 		glClearDepth(1.0f);

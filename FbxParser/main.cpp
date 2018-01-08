@@ -10,7 +10,7 @@ int main(int argc, char **argv)
 		parser->displayContent(parser->getFbxScene());
 	}
 	else {
-		FBXSDK_printf("error: load scene failed.\n\n");
+			FBXSDK_printf("error: load scene failed.\n\n");
 		exit(1);
 	}
 
