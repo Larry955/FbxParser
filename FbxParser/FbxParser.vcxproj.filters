@@ -30,6 +30,9 @@
     <ClCompile Include="RGBImgStructure.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="tgaParser.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="FbxParser.h">
@@ -42,6 +45,9 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="RGBImgStructure.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="tgaParser.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

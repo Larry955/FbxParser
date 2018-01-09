@@ -1,6 +1,7 @@
 #ifndef RGBIMGSTRUCTURE_H
 #define RGBIMGSTRUCTURE_H
-
+#include "tgaParser.h"
+#include <gl\glut.h>
 
 enum eTextureType
 {
@@ -18,7 +19,7 @@ typedef struct __RGBImgStructure{
 
 eTextureType getFileSuffix(const char *fileName);
 
-RGBImgStructure* loadTGA(const char *fileName);
+bool loadTGA(const char *fileName, GLuint pTextureObject);
 RGBImgStructure* loadBMP(const char *fileName);
 bool loadDDS(const char *fileName);
 

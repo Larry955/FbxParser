@@ -4,6 +4,8 @@
 #include <gl\glut.h>
 #include "FbxParser.h"
 #include "RGBImgStructure.h"
+#include <Magick++.h>
+using namespace Magick;
 
 
 class ModelReconstruct;
@@ -18,6 +20,28 @@ static GLfloat xScale = 1.0f;
 static GLfloat yScale = 1.0f;
 static GLfloat zScale = 1.0f;
 
+//angle of rotation for the camera direction
+static GLfloat angle = 0.0f;
+
+//actual vector representing the camera's direction
+static GLfloat cameraRotX = 0.0f;
+static GLfloat cameraRotY = -1.0f;
+
+//XZ offset of the camera
+static GLfloat cameraOffX = 0.0f;
+static GLfloat cameraOffY = 0.0f;
+static GLfloat cameraOffZ = 0.0f;
+
+//position of camera
+static GLfloat cameraPosX = 0.0;
+static GLfloat cameraPosY = -40.0f;
+static GLfloat cameraPosZ = 50.0f;
+
+// the key states. These variables will be zero
+//when no key is being presses
+static float deltaAngle = 0.0f;
+static float deltaMove = 0;
+static int xOrigin = -1;
 
 class ModelReconstruct{
 public:
@@ -35,6 +59,16 @@ public:
 	void activateKeyBoard();	//activate keyboard to rotate the model
 	void keyFunc(unsigned char key, int x, int y);		//not recommend to be called by an object since it's should be called by activateKeys function
 	
+	void activateMouseFunc();
+	void mouseFunc(int button, int state, int x, int y);	
+
+	void activateMotionFunc();
+	void motionFunc(int x, int y);
+	
+	void activeKeyUpFunc();
+	void keyUpFunc(unsigned char key, int x, int y);
+
+	void drawGrid(const FbxAMatrix & pTransform);
 	void loop();			//used for glutMainLoop()
 
 private:
@@ -44,6 +78,7 @@ private:
 
 	bool loadGLTextures();
 
+	void computerPos(GLfloat cameraOffX, GLfloat cameraOffY);
 	//void textureMapping();
 	void initModelSpace();
 	void resetTransformFactor();

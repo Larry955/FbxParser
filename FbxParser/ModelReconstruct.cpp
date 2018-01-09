@@ -8,7 +8,6 @@ GLuint  textureArr[1];         // Storage For One Texture ( NEW )
 
 ModelReconstruct::ModelReconstruct(FbxParser *parser, int argc, char **argv) :parser(parser), argc(argc), argv(argv)
 {
-
 	initModelSpace();
 }
 
@@ -65,24 +64,25 @@ void ModelReconstruct::initModelSpace()
 		//used for run.fbx
 		glMatrixMode(GL_PROJECTION);
 		glLoadIdentity();
-		gluPerspective(120, 1, 1, 80);
-		glMatrixMode(GL_MODELVIEW);
-		glLoadIdentity();
-		gluLookAt(0, -40, 50, 0, 60, 40, 0, 0, 1);
-	}
-	else if (parser->getFbxFileName() == "bunny") {
-		//for bunny.fbx
-		glMatrixMode(GL_PROJECTION);
-		glLoadIdentity();
 		gluPerspective(120, 1, 1, 80000);
 		glMatrixMode(GL_MODELVIEW);
 		glLoadIdentity();
-		gluLookAt(200, 250, -300, 0, 150, 0, 0, 1, 0.5);
+		FBXSDK_printf("cameraOffX: %f, cameraOffY: %f, cameraOffZ: %f\n\n", cameraOffX, cameraOffY, cameraOffZ);
+		gluLookAt(0 + cameraOffX, -40 + cameraOffY, 50 + cameraOffZ, 0, 60, 40, 0, 0, 1);
 	}
+	//else if (parser->getFbxFileName() == "bunny") {
+	//	//for bunny.fbx
+	//	glMatrixMode(GL_PROJECTION);
+	//	glLoadIdentity();
+	//	gluPerspective(120, 1, 1, 80000);
+	//	glMatrixMode(GL_MODELVIEW);
+	//	glLoadIdentity();
+	//	gluLookAt(200, 250, -300, 0, 150, 0, 0, 1, 0.5);
+	//}
 	else {
 		glMatrixMode(GL_PROJECTION);
 		glLoadIdentity();
-		gluPerspective(120, 1, 1, 80);
+		gluPerspective(120, 1, 1, 80000);
 		glMatrixMode(GL_MODELVIEW);
 		glLoadIdentity();
 		gluLookAt(0, -40, 50, 0, 60, 40, 0, 0, 1);
@@ -100,10 +100,13 @@ void displayCallBack()
 void ModelReconstruct::display()
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glRotatef(xRot, 1.0, 0.0, 0.0);
-	glRotatef(zRot, 0.0, 0.0, 1.0);
+	glPushMatrix();
+	FBXSDK_printf("xRot: %f, zRot: %f\n\n", xRot, zRot);
+	/*glRotatef(xRot, 1.0, 0.0, 0.0);
+	glRotatef(zRot, 0.0, 0.0, 1.0);*/
 	glScalef(xScale, yScale, zScale);
-	glBindTexture(GL_TEXTURE_3D, textureArr[0]);
+
+	glBindTexture(GL_TEXTURE_2D, textureArr[0]);
 
 
 	//Polygon Points
@@ -130,14 +133,6 @@ void ModelReconstruct::display()
 			polygonVertex.push_back(vec);
 			++vertexCounter;
 		}
-		
-		/*for (auto s : vertexNormal) {
-			if (s.mData[0] == static_cast<FbxDouble>(0) && 
-				s.mData[1] == static_cast<FbxDouble>(0) &&
-				s.mData[2] == static_cast<FbxDouble>(0) &&
-				s.mData[3] == static_cast<FbxDouble>(0))
-				FBXSDK_printf("invalid normal\n");
-		}*/
 		
 		switch (polygonSize)
 		{
@@ -178,9 +173,36 @@ void ModelReconstruct::display()
 	FBXSDK_printf("UV texture count: %d\n", parser->getFbxMesh()->GetTextureUVCount());	//return 1970 in run.fbx
 	FbxGeometryElementUV *uv = parser->getFbxMesh()->GetElementUV(0);
 	FBXSDK_printf("name: %s\n", uv->GetName());	//return UV_channel_1
+	FbxAMatrix lDummyGlobalPosition;
+
+	if (parser->getFbxFileName() == "run") {
+
+		if (!cameraOffY || !cameraOffX) {
+			computerPos(cameraOffX, cameraOffY);
+		}
+		//used for run.fbx
+		glMatrixMode(GL_PROJECTION);
+		glLoadIdentity();
+		gluPerspective(120, 1, 1, 80000);
+		glMatrixMode(GL_MODELVIEW);
+		glLoadIdentity();
+		FBXSDK_printf("cameraPosX: %f, cameraPosY: %f, cameraPosZ: %f\n\n", cameraPosX, cameraPosY, cameraPosZ);
+		gluLookAt(cameraPosX, cameraPosY, cameraPosZ, 
+			cameraPosX + cameraOffX, cameraPosY + cameraOffY, cameraPosZ + cameraOffZ,
+			0, 0, 1);
+	}
+
+	glPopMatrix();
+	drawGrid(lDummyGlobalPosition);
 
 	glFlush();
 	glutSwapBuffers();
+}
+
+void ModelReconstruct::computerPos(GLfloat cameraOffX, GLfloat cameraOffY)
+{
+	cameraPosX += cameraOffX * cameraRotX;
+	cameraPosY += cameraOffY * cameraRotY;
 }
 
 void ModelReconstruct::displayModel()
@@ -190,21 +212,62 @@ void ModelReconstruct::displayModel()
 	
 }
 
+void ModelReconstruct::drawGrid(const FbxAMatrix & pTransform)
+{
+	glPushMatrix();
+	glMultMatrixd(pTransform);
+
+	// Draw a grid 500*500
+	glColor3f(0.3f, 0.3f, 0.3f);
+	glLineWidth(1.0);
+	
+	const int hw = 500;
+	const int step = 20;
+	const int bigstep = 100;
+	
+	int i;
+
+	// Draw Grid
+	for (i = -hw; i <= hw; i += step) {
+
+		if (i % bigstep == 0) {
+			glLineWidth(2.0);
+		}
+		else {
+			glLineWidth(1.0);
+		}
+		glBegin(GL_LINES);
+		glVertex3i(i, -hw, 0);
+		glVertex3i(i, hw, 0);
+		glEnd();
+		glBegin(GL_LINES);
+		glVertex3i(-hw, i, 0);
+		glVertex3i(hw, i, 0);
+		glEnd();
+
+	}
+	glPopMatrix();
+}
+
 void ModelReconstruct::keyFunc(unsigned char key, int x, int y)
 {
-	resetTransformFactor();
+	//resetTransformFactor();
 
 	switch (key) {
 	case 'w':
+		cameraOffY = 1.0f;
 		xRot -= 2.0;
 		break;
 	case 's':
+		cameraOffY = -1.0f;
 		xRot += 2.0;
 		break;
 	case 'a':
+		cameraOffX = 1.0f;
 		zRot -= 2.0;
 		break;
 	case 'd':
+		cameraOffX -= -1.0f;
 		zRot += 2.0;
 		break;
 	case 'z':
@@ -221,23 +284,6 @@ void ModelReconstruct::keyFunc(unsigned char key, int x, int y)
 		FBXSDK_printf("undefined key: %c\n",key);
 		break;
 	}
-	/*if (key == GLUT_KEY_UP) {
-		xRot = 0.0;
-		xRot -= 2.0;
-	}
-	if (key == GLUT_KEY_DOWN) {
-		xRot = 0.0;
-		xRot += 2.0;
-	}
-	
-	if (key == GLUT_KEY_LEFT){ 
-		zRot = 0.0;
-		zRot -= 2.0; 
-	}
-	if (key == GLUT_KEY_RIGHT){
-		zRot = 0.0;
-		zRot += 2.0;
-	}*/
 	if (xRot > 356.0)
 		xRot = 0.0;
 	if (xRot < -1.0)
@@ -261,6 +307,88 @@ void ModelReconstruct::activateKeyBoard()
 	
 	currModelRec = this;
 	glutKeyboardFunc(::keysCallBack);
+}
+
+
+void ModelReconstruct::motionFunc(int x, int y)
+{
+	// this will only be true when the left button is down
+	if (xOrigin >= 0) {
+
+		// update deltaAngle
+		deltaAngle = (x - xOrigin) * 0.001f;
+
+		// update camera's direction
+		cameraRotX = sin(angle + deltaAngle);
+		cameraRotY = -cos(angle + deltaAngle);
+	}
+}
+
+
+void motionCallBack(int x, int y)
+{
+	currModelRec->motionFunc(x, y);
+}
+
+void ModelReconstruct::activateMotionFunc()
+{
+	currModelRec = this;
+	glutMotionFunc(::motionCallBack);
+}
+
+void ModelReconstruct::mouseFunc(int button, int state, int x, int y)
+{
+	// only start motion if the left button is pressed
+	if (button == GLUT_LEFT_BUTTON) {
+
+		// when the button is released
+		if (state == GLUT_UP) {
+			angle += deltaAngle;
+			xOrigin = -1;
+		}
+		else  {// state = GLUT_DOWN
+			xOrigin = x;
+		}
+	}
+}
+
+void mouseCallBack(int button, int state, int x, int y)
+{
+	currModelRec->mouseFunc(button, state, x, y);
+}
+
+void ModelReconstruct::activateMouseFunc()
+{
+	currModelRec = this;
+	glutMouseFunc(::mouseCallBack);
+}
+
+void ModelReconstruct::keyUpFunc(unsigned char key, int x, int y)
+{
+	switch (key)
+	{
+	case 'w':
+	case 's':
+		cameraOffY = 0.0f;
+		break;
+	case 'a':
+	case 'd':
+		cameraOffX = 0.0f;
+		break;
+	default:
+		break;
+	}
+}
+
+void keyUpCallBack(unsigned char key, int x, int y)
+{
+	currModelRec->keyUpFunc(key, x, y);
+}
+
+void ModelReconstruct::activeKeyUpFunc()
+{
+	currModelRec = this;
+	glutKeyboardUpFunc(::keyUpCallBack);
 }
 
 void ModelReconstruct::caclNormal(FbxMesh *mesh, int vertexIndex, int vertexCounter, int polygonSize, FbxVector4 &normal)
@@ -292,35 +420,12 @@ void ModelReconstruct::caclNormal(FbxMesh *mesh, int vertexIndex, int vertexCoun
 		switch (vertexNormal->GetReferenceMode())
 		{
 		case FbxGeometryElement::eDirect:
-			//c = vertexNormal->GetDirectArray().GetCount();
 			normal = vertexNormal->GetDirectArray().GetAt(vertexCounter).mData;
-			/*if (polygonSize == 3) {
-			normal.mData[0] = static_cast<float>(vertexNormal->GetDirectArray().GetAt(vertexCounter).mData[0]);
-			normal.mData[1] = static_cast<float>(vertexNormal->GetDirectArray().GetAt(vertexCounter).mData[1]);
-			normal.mData[2] = static_cast<float>(vertexNormal->GetDirectArray().GetAt(vertexCounter).mData[2]);
-			}
-			else if (polygonSize == 4) {
-			normal.mData[0] = static_cast<float>(vertexNormal->GetDirectArray().GetAt(vertexCounter).mData[0]);
-			normal.mData[1] = static_cast<float>(vertexNormal->GetDirectArray().GetAt(vertexCounter).mData[1]);
-			normal.mData[2] = static_cast<float>(vertexNormal->GetDirectArray().GetAt(vertexCounter).mData[2]);
-			normal.mData[3] = static_cast<float>(vertexNormal->GetDirectArray().GetAt(vertexCounter).mData[3]);
-			}*/
 			break;
 		case FbxGeometryElement::eIndexToDirect:
 		{
 			int index = vertexNormal->GetIndexArray().GetAt(vertexCounter);
 			normal = vertexNormal->GetDirectArray().GetAt(index).mData;
-			/*if (polygonSize == 3) {
-			normal.mData[0] = static_cast<float>(vertexNormal->GetDirectArray().GetAt(index).mData[0]);
-			normal.mData[1] = static_cast<float>(vertexNormal->GetDirectArray().GetAt(index).mData[1]);
-			normal.mData[2] = static_cast<float>(vertexNormal->GetDirectArray().GetAt(index).mData[2]);
-			}
-			else if (polygonSize == 4) {
-			normal.mData[0] = static_cast<float>(vertexNormal->GetDirectArray().GetAt(index).mData[0]);
-			normal.mData[1] = static_cast<float>(vertexNormal->GetDirectArray().GetAt(index).mData[1]);
-			normal.mData[2] = static_cast<float>(vertexNormal->GetDirectArray().GetAt(index).mData[2]);
-			normal.mData[3] = static_cast<float>(vertexNormal->GetDirectArray().GetAt(index).mData[3]);
-			}*/
 			break;
 		}
 		default:
@@ -345,6 +450,11 @@ void ModelReconstruct::resetTransformFactor()
 	xScale = 1.0;
 	yScale = 1.0;
 	zScale = 1.0;
+	 
+	/*cameraOffX = 0.0;
+	cameraOffY = 0.0;
+	cameraOffZ = 0.0;*/
+
 }
 
 bool ModelReconstruct::loadGLTextures()
@@ -354,13 +464,64 @@ bool ModelReconstruct::loadGLTextures()
 	memset(textureImage, 0, sizeof(RGBImgStructure*) * 1);	//init the pointer to NULL
 	FbxString fileName = parser->getTextureFileName();
 	
-	
+#define TEXTUREIMAGE
+#undef TEXTUREIMAGE
+
 	if (isNotEmpty(fileName)) {
-		textureImage[0] = loadTextureImg(fileName.Buffer(),argv);
-		/*switch (getFileSuffix(fileName.Buffer()))
+#ifdef TEXTUREIMAGE
+		//textureImage[0] = loadTextureImg(fileName.Buffer(),argv);
+
+		InitializeMagick(*argv);
+		try {
+			Image image(fileName.Buffer());
+			Geometry geo = image.size();
+			size_t width = geo.width();
+			size_t height = geo.height();
+			
+			/*Pixels myPixels(image);
+
+			Quantum* pixels;
+			pixels = myPixels.get(0, 0, width, height);*/
+
+
+			Blob blob;
+			image.write(&blob);
+			
+			unsigned char* pixels = (unsigned char*)blob.data();
+			
+
+			glGenTextures(1, &textureArr[0]);		//create the texture
+			glBindTexture(GL_TEXTURE_2D, textureArr[0]);
+			
+			//glTexImage2D(GL_TEXTURE_2D, 0, 3, textureImage[0]->width, textureImage[0]->height, 0, GL_RGB, GL_UNSIGNED_BYTE, textureImage[0]->data);
+			glTexImage2D(GL_TEXTURE_2D, 0, 3, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, pixels);
+
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+			//if (textureImage[0]->data) {
+			//	//FBXSDK_printf("ss%s\n", textureImage[0]->data);
+			//	free(textureImage[0]->data);
+			//}
+			//free(textureImage[0]);
+
+			glEnable(GL_TEXTURE_2D);
+			glShadeModel(GL_SMOOTH);
+			glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+			glClearDepth(1.0f);
+			glEnable(GL_DEPTH_TEST);
+			glDepthFunc(GL_LEQUAL);
+			glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
+		}
+		catch (Exception &error) {
+			FBXSDK_printf("error: %s", error.what());
+			return false;
+		}
+#else
+		switch (getFileSuffix(fileName.Buffer()))
 		{
 		case eTextureType::TGA:
-			textureImage[0] = loadTGA(fileName.Buffer());
+			return loadTGA(fileName.Buffer(), textureArr[0]);
 			break;
 		case eTextureType::DDS:
 			return loadDDS(fileName.Buffer());
@@ -368,20 +529,20 @@ bool ModelReconstruct::loadGLTextures()
 			textureImage[0] = loadBMP(fileName.Buffer());
 			break;
 		case eTextureType::UNKNOWN:
-			FBXSDK_printf("erro!\n\n");
+			FBXSDK_printf("error!\n\n");
 			break;
 		default:
 			break;
-		}*/
+		}
 	}
 	if (textureImage[0]) {	
 		size_t len = strlen((char*)textureImage[0]->data);
 		glGenTextures(1, &textureArr[0]);		//create the texture
 
-		glBindTexture(GL_TEXTURE_3D, textureArr[0]);
-		glTexImage2D(GL_TEXTURE_3D, 0, 3, textureImage[0]->width, textureImage[0]->height, 0, GL_RGB, GL_UNSIGNED_BYTE, textureImage[0]->data);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glBindTexture(GL_TEXTURE_2D, textureArr[0]);
+		glTexImage2D(GL_TEXTURE_2D, 0, 3, textureImage[0]->width, textureImage[0]->height, 0, GL_RGB, GL_UNSIGNED_BYTE, textureImage[0]->data);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
 		if (textureImage[0]->data) {
 			//FBXSDK_printf("ss%s\n", textureImage[0]->data);
@@ -389,7 +550,7 @@ bool ModelReconstruct::loadGLTextures()
 		}
 		free(textureImage[0]);
 
-		glEnable(GL_TEXTURE_3D);
+		glEnable(GL_TEXTURE_2D);
 		glShadeModel(GL_SMOOTH);
 		glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 		glClearDepth(1.0f);
@@ -398,32 +559,7 @@ bool ModelReconstruct::loadGLTextures()
 		glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
 
 		status = true;
+#endif
 	}
 	return status;
 }
-
-//RGBImgStructure* ModelReconstruct::loadImageFile(const char* fileName)
-//{
-//	textureImage = (RGBImgStructure*)malloc(sizeof(RGBImgStructure));
-//	textureImage->width = 0;	//initialize
-//	textureImage->height = 0;
-//	textureImage->data = nullptr;
-//
-//	FILE* imageFile = nullptr;
-//	unsigned long size = 0;
-//	imageFile = fopen(fileName, "rb");		//binary file
-//
-//	fseek(imageFile, 18, SEEK_SET);
-//	fread(&(textureImage->width), 4, 1, imageFile);
-//	fread(&(textureImage->height), 4, 1, imageFile);
-//	fseek(imageFile, 0, SEEK_END);
-//	size = ftell(imageFile) - 54;
-//
-//	textureImage->data = (unsigned char*)malloc(size);
-//	memset(textureImage->data, 0, size);
-//	fseek(imageFile, 54, SEEK_SET);
-//	fread(textureImage->data, size, 1, imageFile);
-//
-//	fclose(imageFile);
-//	return textureImage;
-//}

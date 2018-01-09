@@ -31,7 +31,7 @@ eTextureType getFileSuffix(const char *fileName)
 		return eTextureType::UNKNOWN;
 }
 
-RGBImgStructure* loadTGA(const char* fileName)
+bool loadTGA(const char* fileName, GLuint pTextureObject)
 {
 	RGBImgStructure* textureImage;
 	textureImage = (RGBImgStructure*)malloc(sizeof(RGBImgStructure));
@@ -39,81 +39,116 @@ RGBImgStructure* loadTGA(const char* fileName)
 	textureImage->height = 0;
 	textureImage->data = nullptr;
 	
-	GLubyte  TGAheader[12] = { 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0 }; // Uncompressed TGA Header
-	GLubyte  TGAcompare[12];        // Used To Compare TGA Header
-	GLubyte  header[6];         // First 6 Useful Bytes From The Header
-	GLuint  bytesPerPixel;        // Holds Number Of Bytes Per Pixel Used In The TGA File
-	GLuint  imageSize;         // Used To Store The Image Size When Setting Aside Ram
-	GLuint  temp;          // Temporary Variable
-	GLuint  type = GL_RGBA;        // Set The Default GL Mode To RBGA (32 BPP)
+
+	tga_image lTGAImage;
+
+	if (tga_read(&lTGAImage, fileName) == TGA_NOERR)
+	{
+		// Make sure the image is left to right
+		if (tga_is_right_to_left(&lTGAImage))
+			tga_flip_horiz(&lTGAImage);
+
+		// Make sure the image is bottom to top
+		if (tga_is_top_to_bottom(&lTGAImage))
+			tga_flip_vert(&lTGAImage);
+
+		// Make the image BGR 24
+		tga_convert_depth(&lTGAImage, 24);
+
+		// Transfer the texture date into GPU
+		glGenTextures(1, &pTextureObject);
+		glBindTexture(GL_TEXTURE_2D, pTextureObject);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+		glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+		glTexImage2D(GL_TEXTURE_2D, 0, 3, lTGAImage.width, lTGAImage.height, 0, GL_BGR,
+			GL_UNSIGNED_BYTE, lTGAImage.image_data);
+		glBindTexture(GL_TEXTURE_2D, 0);
+
+		tga_free_buffers(&lTGAImage);
+
+		return true;
+	}
+	else
+		return false;
 	
-	FILE *imageFile = fopen(fileName, "rb");      // Open The TGA File
-	if (!imageFile||          // Does File Even Exist?
-		fread(TGAcompare, 1, sizeof(TGAcompare), imageFile) != sizeof(TGAcompare) || // Are There 12 Bytes To Read?
-		memcmp(TGAheader, TGAcompare, sizeof(TGAheader)) != 0 || // Does The Header Match What We Want?
-		fread(header, 1, sizeof(header), imageFile) != sizeof(header))    // If So Read Next 6 Header Bytes
-	{
-		if (!imageFile)         // Did The File Even Exist?
-			return nullptr;         // Return False
-		else
-		{
-			fclose(imageFile);         // If Anything Failed, Close The File
-			return nullptr;         // Return False
-		}
-	}
-	textureImage->width = header[1] * 256 + header[0];   //  Determine The TGA Width (highbyte*256+lowbyte)
-	textureImage->height = header[3] * 256 + header[2];   // Determine The TGA Height (highbyte*256+lowbyte)
+	//GLubyte  TGAheader[12] = { 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0 }; // Uncompressed TGA Header
+	//GLubyte  TGAcompare[12];        // Used To Compare TGA Header
+	//GLubyte  header[6];         // First 6 Useful Bytes From The Header
+	//GLuint  bytesPerPixel;        // Holds Number Of Bytes Per Pixel Used In The TGA File
+	//GLuint  imageSize;         // Used To Store The Image Size When Setting Aside Ram
+	//GLuint  temp;          // Temporary Variable
+	//GLuint  type = GL_RGBA;        // Set The Default GL Mode To RBGA (32 BPP)
+	//
+	//FILE *imageFile = fopen(fileName, "rb");      // Open The TGA File
+	//if (!imageFile||          // Does File Even Exist?
+	//	fread(TGAcompare, 1, sizeof(TGAcompare), imageFile) != sizeof(TGAcompare) || // Are There 12 Bytes To Read?
+	//	memcmp(TGAheader, TGAcompare, sizeof(TGAheader)) != 0 || // Does The Header Match What We Want?
+	//	fread(header, 1, sizeof(header), imageFile) != sizeof(header))    // If So Read Next 6 Header Bytes
+	//{
+	//	if (!imageFile)         // Did The File Even Exist?
+	//		return nullptr;         // Return False
+	//	else
+	//	{
+	//		fclose(imageFile);         // If Anything Failed, Close The File
+	//		return nullptr;         // Return False
+	//	}
+	//}
+	//textureImage->width = header[1] * 256 + header[0];   //  Determine The TGA Width (highbyte*256+lowbyte)
+	//textureImage->height = header[3] * 256 + header[2];   // Determine The TGA Height (highbyte*256+lowbyte)
 
-	if (textureImage->width <= 0 ||        // Is The Width Less Than Or Equal To Zero
-		textureImage->height <= 0 ||        // Is The Height Less Than Or Equal To Zero
-		(header[4] != 24 && header[4] != 32))     // Is The TGA 24 or 32 Bit? RGB Or RGBA
-	{
-		fclose(imageFile);          // If Anything Failed, Close The File
-		return nullptr;          // Return False
-	}
+	//if (textureImage->width <= 0 ||        // Is The Width Less Than Or Equal To Zero
+	//	textureImage->height <= 0 ||        // Is The Height Less Than Or Equal To Zero
+	//	(header[4] != 24 && header[4] != 32))     // Is The TGA 24 or 32 Bit? RGB Or RGBA
+	//{
+	//	fclose(imageFile);          // If Anything Failed, Close The File
+	//	return nullptr;          // Return False
+	//}
 
-	bytesPerPixel = header[4] / 8;      // Divide By 8 To Get The Bytes Per Pixel
-	imageSize = textureImage->width * textureImage->height * bytesPerPixel; // Calculate The Memory Required For The TGA Data
-	textureImage->data = (unsigned char*)malloc(imageSize);  // Reserve Memory To Hold The TGA Data
-	
-	if (textureImage->data == nullptr ||       // Does The Storage Memory Exist?
-		fread(textureImage->data, 1, imageSize, imageFile) != imageSize) // Does The Image Size Match The Memory Reserved?
-	{
-		if (textureImage->data != nullptr)      // Was Image Data Loaded
-			free(textureImage->data);      // If So, Release The Image Data
-		fclose(imageFile);          // Close The File
-		return false;          // Return False
-	}
+	//bytesPerPixel = header[4] / 8;      // Divide By 8 To Get The Bytes Per Pixel
+	//imageSize = textureImage->width * textureImage->height * bytesPerPixel; // Calculate The Memory Required For The TGA Data
+	//textureImage->data = (unsigned char*)malloc(imageSize);  // Reserve Memory To Hold The TGA Data
+	//
+	//if (textureImage->data == nullptr ||       // Does The Storage Memory Exist?
+	//	fread(textureImage->data, 1, imageSize, imageFile) != imageSize) // Does The Image Size Match The Memory Reserved?
+	//{
+	//	if (textureImage->data != nullptr)      // Was Image Data Loaded
+	//		free(textureImage->data);      // If So, Release The Image Data
+	//	fclose(imageFile);          // Close The File
+	//	return false;          // Return False
+	//}
 
-	for (GLuint i = 0; i != int(imageSize); i += bytesPerPixel)  // Loop Through The Image Data
-	{              // Swaps The 1st And 3rd Bytes ('R'ed and 'B'lue)
-		temp = textureImage->data[i];       // Temporarily Store The Value At Image Data 'i'
-		textureImage->data[i] = textureImage->data[i + 2]; // Set The 1st Byte To The Value Of The 3rd Byte
-		textureImage->data[i + 2] = temp;     // Set The 3rd Byte To The Value In 'temp' (1st Byte Value)
-	}
+	//for (GLuint i = 0; i != int(imageSize); i += bytesPerPixel)  // Loop Through The Image Data
+	//{              // Swaps The 1st And 3rd Bytes ('R'ed and 'B'lue)
+	//	temp = textureImage->data[i];       // Temporarily Store The Value At Image Data 'i'
+	//	textureImage->data[i] = textureImage->data[i + 2]; // Set The 1st Byte To The Value Of The 3rd Byte
+	//	textureImage->data[i + 2] = temp;     // Set The 3rd Byte To The Value In 'temp' (1st Byte Value)
+	//}
 
-	fclose(imageFile);           // Close The File
-	return textureImage;
+	//fclose(imageFile);           // Close The File
+	//return textureImage;
 }
 
-//bool loadDDS(const char *fileName)
-//{
-//	RGBImgStructure* textureImage;
-//	textureImage = (RGBImgStructure*)malloc(sizeof(RGBImgStructure));
-//	textureImage->width = 0;	//initialize
-//	textureImage->height = 0;
-//	textureImage->data = nullptr;
-//	
-//	FILE* imageFile = nullptr;
-//	unsigned long size = 0;
-//	imageFile = fopen(fileName, "rb");		//binary file
-//
-//	if (!imageFile) {
-//		std::cerr << "error: open " << fileName << " failed\n\n" << std::endl;
-//		return nullptr;
-//	}
-//
-//}
+bool loadDDS(const char *fileName)
+{
+	RGBImgStructure* textureImage;
+	textureImage = (RGBImgStructure*)malloc(sizeof(RGBImgStructure));
+	textureImage->width = 0;	//initialize
+	textureImage->height = 0;
+	textureImage->data = nullptr;
+	
+	FILE* imageFile = nullptr;
+	unsigned long size = 0;
+	imageFile = fopen(fileName, "rb");		//binary file
+
+	if (!imageFile) {
+		std::cerr << "error: open " << fileName << " failed\n\n" << std::endl;
+		return nullptr;
+	}
+	return textureImage;
+}
 
 RGBImgStructure* loadBMP(const char *fileName)
 {
@@ -156,9 +191,11 @@ RGBImgStructure* loadTextureImg(const char *fileName,char **argv)
 		Image img(fileName);
 		textureImage->width = img.size().width();
 		textureImage->height = img.size().height();
-		/*Pixels pixelsCache(img);
+		
+		Pixels pixelsCache(img);
 		Quantum* pixels;
-		pixels = pixelsCache.get(0, 0, img.columns(), img.rows());*/
+		pixels = pixelsCache.get(0, 0, img.columns(), img.rows());
+		
 
 		Blob blob;
 		img.write(&blob);
