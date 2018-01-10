@@ -297,6 +297,95 @@ void FbxParser::displayTexture(FbxScene *pScene)
 	}
 }
 
+void FbxParser::displayPose(FbxScene *pScene)
+{
+	FBXSDK_printf("\n\n---------------------------Pose-------------------------------\n\n");
+	int      i, j, k, lPoseCount;
+	FbxString  lName;
+
+	lPoseCount = pScene->GetPoseCount();
+
+	for (i = 0; i < lPoseCount; i++)
+	{
+		FbxPose* lPose = pScene->GetPose(i);
+
+		lName = lPose->GetName();
+		displayString("Pose Name: ", lName.Buffer());
+
+		displayBool("    Is a bind pose: ", lPose->IsBindPose());
+
+		displayInt("    Number of items in the pose: ", lPose->GetCount());
+
+		displayString("", "");
+
+		for (j = 0; j<lPose->GetCount(); j++)
+		{
+			lName = lPose->GetNodeName(j).GetCurrentName();
+			displayString("    Item name: ", lName.Buffer());
+
+			if (!lPose->IsBindPose())
+			{
+				// Rest pose can have local matrix
+				displayBool("    Is local space matrix: ", lPose->IsLocalMatrix(j));
+			}
+
+			displayString("    Matrix value: ", "");
+
+			FbxString lMatrixValue;
+
+			for (k = 0; k<4; k++)
+			{
+				FbxMatrix  lMatrix = lPose->GetMatrix(j);
+				FbxVector4 lRow = lMatrix.GetRow(k);
+				char        lRowValue[1024];
+
+				//FBXSDK_sprintf(lRowValue, 1024, "%9.4f %9.4f %9.4f %9.4f\n", lRow[0], lRow[1], lRow[2], lRow[3]);
+				lMatrixValue += FbxString("        ") + FbxString(lRowValue);
+			}
+
+			//displayString("", lMatrixValue.Buffer());
+		}
+	}
+
+	lPoseCount = pScene->GetCharacterPoseCount();
+
+	for (i = 0; i < lPoseCount; i++)
+	{
+		FbxCharacterPose* lPose = pScene->GetCharacterPose(i);
+		FbxCharacter*     lCharacter = lPose->GetCharacter();
+
+		if (!lCharacter) break;
+
+		displayString("Character Pose Name: ", lCharacter->GetName());
+
+		FbxCharacterLink lCharacterLink;
+		FbxCharacter::ENodeId  lNodeId = FbxCharacter::eHips;
+
+		while (lCharacter->GetCharacterLink(lNodeId, &lCharacterLink))
+		{
+			FbxAMatrix& lGlobalPosition = lCharacterLink.mNode->EvaluateGlobalTransform(FBXSDK_TIME_ZERO);
+
+			displayString("    Matrix value: ", "");
+
+			FbxString lMatrixValue;
+
+			for (k = 0; k < 4; k++)
+			{
+				FbxVector4 lRow = lGlobalPosition.GetRow(k);
+				char        lRowValue[1024];
+
+				//FBXSDK_sprintf(lRowValue, 1024, "%9.4f %9.4f %9.4f %9.4f\n", lRow[0], lRow[1], lRow[2], lRow[3]);
+				lMatrixValue += FbxString("        ") + FbxString(lRowValue);
+			}
+
+			//displayString("", lMatrixValue.Buffer());
+
+			lNodeId = FbxCharacter::ENodeId(int(lNodeId) + 1);
+		}
+	}
+
+}
+
 void FbxParser::displayMarker(FbxNode *node)
 {
 	FbxMarker *marker = (FbxMarker*)node->GetNodeAttribute();

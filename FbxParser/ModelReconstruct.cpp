@@ -40,7 +40,7 @@ void ModelReconstruct::initModelSpace()
 	glLightfv(GL_LIGHT0, GL_DIFFUSE, light0_diffuse);
 	glLightfv(GL_LIGHT0, GL_POSITION, light0_position);
 
-	/*GLfloat light1_ambient[] = { 0.0, 0.2, 0.2, 1.0 };
+	GLfloat light1_ambient[] = { 0.0, 0.2, 0.2, 1.0 };
 	GLfloat light1_diffuse[] = { 1.0, 0.0, 0.0, 1.0 };
 	GLfloat light1_specular[] = { 1.0, 0.0, 0.6, 1.0 };
 	GLfloat light1_position[] = { 1.0, 0.0, 1.0, 0.0 };
@@ -51,13 +51,13 @@ void ModelReconstruct::initModelSpace()
 	glLightfv(GL_LIGHT1, GL_SPECULAR, light1_specular);
 	glLightfv(GL_LIGHT1, GL_POSITION, light1_position);
 	glLightf(GL_LIGHT1, GL_SPOT_CUTOFF, 30.0);
-	glLightfv(GL_LIGHT1, GL_SPOT_DIRECTION, spot_direction);*/
+	glLightfv(GL_LIGHT1, GL_SPOT_DIRECTION, spot_direction);
 
 	glEnable(GL_LIGHTING);
 	glEnable(GL_LIGHT0);
-	//glEnable(GL_LIGHT1);
+	glEnable(GL_LIGHT1);
 	glEnable(GL_DEPTH_TEST);
-	glClearColor(1.0, 1.0, 1.0, 1.0);
+	glClearColor(0.0, 0.0, 0.0, 0.0);
 
 
 	if (parser->getFbxFileName() == "run") {
@@ -67,25 +67,35 @@ void ModelReconstruct::initModelSpace()
 		gluPerspective(120, 1, 1, 80000);
 		glMatrixMode(GL_MODELVIEW);
 		glLoadIdentity();
-		FBXSDK_printf("cameraOffX: %f, cameraOffY: %f, cameraOffZ: %f\n\n", cameraOffX, cameraOffY, cameraOffZ);
-		gluLookAt(0 + cameraOffX, -40 + cameraOffY, 50 + cameraOffZ, 0, 60, 40, 0, 0, 1);
+		FBXSDK_printf("cameraPosX: %f, cameraPosY: %f, cameraPosZ: %f\n\n", cameraPosX, cameraPosY, cameraPosZ);
+		gluLookAt(cameraPosX, cameraPosY, cameraPosZ,
+			cameraPosX + cameraRotX, cameraPosY + cameraRotY, cameraPosZ,
+			0, 0, 1);
+		//gluLookAt(0, -80, 100, 0, 60, 40, 0, 0, 1);
 	}
-	//else if (parser->getFbxFileName() == "bunny") {
-	//	//for bunny.fbx
-	//	glMatrixMode(GL_PROJECTION);
-	//	glLoadIdentity();
-	//	gluPerspective(120, 1, 1, 80000);
-	//	glMatrixMode(GL_MODELVIEW);
-	//	glLoadIdentity();
-	//	gluLookAt(200, 250, -300, 0, 150, 0, 0, 1, 0.5);
-	//}
+	else if (parser->getFbxFileName() == "bunny") {
+		//for bunny.fbx
+		glMatrixMode(GL_PROJECTION);
+		glLoadIdentity();
+		gluPerspective(120, 1, 1, 80000);
+		glMatrixMode(GL_MODELVIEW);
+		glLoadIdentity();
+		gluLookAt(cameraPosX, cameraPosY, cameraPosZ,
+			cameraPosX + cameraRotX, cameraPosY + cameraRotY, cameraPosZ,
+			0, 0, 1);
+		//gluLookAt(200, 250, -300, 0, 150, 0, 0, 1, 0.5);
+	}
 	else {
 		glMatrixMode(GL_PROJECTION);
 		glLoadIdentity();
 		gluPerspective(120, 1, 1, 80000);
 		glMatrixMode(GL_MODELVIEW);
 		glLoadIdentity();
-		gluLookAt(0, -40, 50, 0, 60, 40, 0, 0, 1);
+		FBXSDK_printf("cameraPosX: %f, cameraPosY: %f, cameraPosZ: %f\n\n", cameraPosX, cameraPosY, cameraPosZ);
+
+		gluLookAt(cameraPosX, cameraPosY, cameraPosZ,
+			cameraPosX + cameraRotX, cameraPosY + cameraRotY, cameraPosZ,
+			0, 0, 1);
 	}
 	
 
@@ -100,7 +110,68 @@ void displayCallBack()
 void ModelReconstruct::display()
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	//if (parser->getFbxFileName() == "run") {
+
+	//	if (deltaMove) {
+	//		FBXSDK_printf("deltaMove\n\n");
+	//		computerPos(deltaMove);
+	//	}
+	//	FBXSDK_printf("glut\n\n");
+	//	//used for run.fbx
+	//	glMatrixMode(GL_PROJECTION);
+	//	glLoadIdentity();
+	//	gluPerspective(120, 1, 1, 80000);
+	//	glMatrixMode(GL_MODELVIEW);
+	//	glLoadIdentity();
+	//	FBXSDK_printf("cameraRotX: %f, cameraRotY: %f\n\n", cameraRotX, cameraRotY);
+	//	gluLookAt(cameraPosX, cameraPosY, cameraPosZ,
+	//		cameraPosX + cameraRotX, cameraPosY + cameraRotY, cameraPosZ,
+	//		0, 0, 1);
+	//}
+
+	if (deltaMove) {
+		computerPos(deltaMove);
+	}
+
+	if (parser->getFbxFileName() == "run") {
+		//used for run.fbx
+		glMatrixMode(GL_PROJECTION);
+		glLoadIdentity();
+		gluPerspective(120, 1, 1, 80000);
+		glMatrixMode(GL_MODELVIEW);
+		glLoadIdentity();
+		FBXSDK_printf("cameraPosX: %f, cameraPosY: %f, cameraPosZ: %f\n\n", cameraPosX, cameraPosY, cameraPosZ);
+		gluLookAt(cameraPosX, cameraPosY, cameraPosZ,
+			cameraPosX + cameraRotX, cameraPosY + cameraRotY, cameraPosZ,
+			0, 0, 1);
+		//gluLookAt(0, -80, 100, 0, 60, 40, 0, 0, 1);
+	}
+	else if (parser->getFbxFileName() == "bunny") {
+		//for bunny.fbx
+		glMatrixMode(GL_PROJECTION);
+		glLoadIdentity();
+		gluPerspective(120, 1, 1, 80000);
+		glMatrixMode(GL_MODELVIEW);
+		glLoadIdentity();
+		//gluLookAt(200, 250, -300, 0, 150, 0, 0, 1, 0.5);
+		gluLookAt(cameraPosX, cameraPosY, cameraPosZ,
+			cameraPosX + cameraRotX, cameraPosY + cameraRotY, cameraPosZ,
+			0, 0, 1);
+	}
+	else {
+		glMatrixMode(GL_PROJECTION);
+		glLoadIdentity();
+		gluPerspective(120, 1, 1, 80000);
+		glMatrixMode(GL_MODELVIEW);
+		glLoadIdentity();
+		FBXSDK_printf("cameraPosX: %f, cameraPosY: %f, cameraPosZ: %f\n\n", cameraPosX, cameraPosY, cameraPosZ);
+
+		gluLookAt(cameraPosX, cameraPosY, cameraPosZ,
+			cameraPosX + cameraRotX, cameraPosY + cameraRotY, cameraPosZ,
+			0, 0, 1);
+	}
 	glPushMatrix();
+
 	FBXSDK_printf("xRot: %f, zRot: %f\n\n", xRot, zRot);
 	/*glRotatef(xRot, 1.0, 0.0, 0.0);
 	glRotatef(zRot, 0.0, 0.0, 1.0);*/
@@ -138,6 +209,7 @@ void ModelReconstruct::display()
 		{
 		case 3:
 			glEnable(GL_NORMALIZE);	//normalize
+			glColor3f(1.0f, 0.0f, 0.0f);
 			glBegin(GL_TRIANGLES);
 			glNormal3f(static_cast<float>(vertexNormal[0].mData[0]), static_cast<float>(vertexNormal[0].mData[1]), static_cast<float>(vertexNormal[0].mData[2]));
 			glVertex3f(polygonVertex[0].mData[0], polygonVertex[0].mData[1], polygonVertex[0].mData[2]);
@@ -149,6 +221,8 @@ void ModelReconstruct::display()
 			break;
 		case 4:
 			glEnable(GL_NORMALIZE);	//normalize
+			glColor3f(1.0f, 0.0f, 0.0f);
+
 			glBegin(GL_QUADS);
 			glNormal3f(static_cast<float>(vertexNormal[0].mData[0]), static_cast<float>(vertexNormal[0].mData[1]), static_cast<float>(vertexNormal[0].mData[2]));
 			glVertex3f(polygonVertex[0].mData[0], polygonVertex[0].mData[1], polygonVertex[0].mData[2]);
@@ -175,34 +249,22 @@ void ModelReconstruct::display()
 	FBXSDK_printf("name: %s\n", uv->GetName());	//return UV_channel_1
 	FbxAMatrix lDummyGlobalPosition;
 
-	if (parser->getFbxFileName() == "run") {
 
-		if (!cameraOffY || !cameraOffX) {
-			computerPos(cameraOffX, cameraOffY);
-		}
-		//used for run.fbx
-		glMatrixMode(GL_PROJECTION);
-		glLoadIdentity();
-		gluPerspective(120, 1, 1, 80000);
-		glMatrixMode(GL_MODELVIEW);
-		glLoadIdentity();
-		FBXSDK_printf("cameraPosX: %f, cameraPosY: %f, cameraPosZ: %f\n\n", cameraPosX, cameraPosY, cameraPosZ);
-		gluLookAt(cameraPosX, cameraPosY, cameraPosZ, 
-			cameraPosX + cameraOffX, cameraPosY + cameraOffY, cameraPosZ + cameraOffZ,
-			0, 0, 1);
-	}
 
 	glPopMatrix();
 	drawGrid(lDummyGlobalPosition);
 
 	glFlush();
 	glutSwapBuffers();
+	FBXSDK_printf("model finished\n\n");
 }
 
-void ModelReconstruct::computerPos(GLfloat cameraOffX, GLfloat cameraOffY)
+void ModelReconstruct::computerPos(GLfloat deltaMove)
 {
-	cameraPosX += cameraOffX * cameraRotX;
-	cameraPosY += cameraOffY * cameraRotY;
+	cameraPosX += deltaMove * cameraRotX * 0.1f;
+	cameraPosY += deltaMove * cameraRotY * 0.1f;
+	FBXSDK_printf("cameraPosX: %f, cameraPosY: %f, cameraRotX: %f, cameraRotY: \n\n", cameraPosX, cameraPosY, cameraRotX, cameraRotY);
+
 }
 
 void ModelReconstruct::displayModel()
@@ -214,10 +276,12 @@ void ModelReconstruct::displayModel()
 
 void ModelReconstruct::drawGrid(const FbxAMatrix & pTransform)
 {
+	
 	glPushMatrix();
 	glMultMatrixd(pTransform);
 
 	// Draw a grid 500*500
+	glDisable(GL_LIGHTING);	//disabled light before draw lines to make the color of grid works
 	glColor3f(0.3f, 0.3f, 0.3f);
 	glLineWidth(1.0);
 	
@@ -236,16 +300,34 @@ void ModelReconstruct::drawGrid(const FbxAMatrix & pTransform)
 		else {
 			glLineWidth(1.0);
 		}
-		glBegin(GL_LINES);
-		glVertex3i(i, -hw, 0);
-		glVertex3i(i, hw, 0);
-		glEnd();
-		glBegin(GL_LINES);
-		glVertex3i(-hw, i, 0);
-		glVertex3i(hw, i, 0);
-		glEnd();
+		if (i == 0) {
+			glColor3f(1.0f, 0.0f, 0.0f);
+			glBegin(GL_LINES);
+			glVertex3i(i, -hw, 0);
+			glVertex3i(i, hw, 0);
+			glEnd();
+
+			glColor3f(0.0f, 1.0f, 0.0f);
+			glBegin(GL_LINES);
+			glVertex3i(-hw, i, 0);
+			glVertex3i(hw, i, 0);
+			glEnd();
+		}
+		else {
+			glColor3f(0.3f, 0.3f, 0.3f);
+			glBegin(GL_LINES);
+			glVertex3i(i, -hw, 0);
+			glVertex3i(i, hw, 0);
+			glEnd();
+			
+			glBegin(GL_LINES);
+			glVertex3i(-hw, i, 0);
+			glVertex3i(hw, i, 0);
+			glEnd();
+		}
 
 	}
+	glEnable(GL_LIGHTING);
 	glPopMatrix();
 }
 
@@ -255,18 +337,24 @@ void ModelReconstruct::keyFunc(unsigned char key, int x, int y)
 
 	switch (key) {
 	case 'w':
+		deltaMove = 1.0f;
 		cameraOffY = 1.0f;
 		xRot -= 2.0;
 		break;
 	case 's':
+		deltaMove = -1.0f;
+
 		cameraOffY = -1.0f;
 		xRot += 2.0;
 		break;
 	case 'a':
+		//cameraRotY = 0.0f;
+		deltaMove = 1.0f;
 		cameraOffX = 1.0f;
 		zRot -= 2.0;
 		break;
 	case 'd':
+		deltaMove = -1.0f;
 		cameraOffX -= -1.0f;
 		zRot += 2.0;
 		break;
@@ -314,13 +402,17 @@ void ModelReconstruct::motionFunc(int x, int y)
 {
 	// this will only be true when the left button is down
 	if (xOrigin >= 0) {
-
 		// update deltaAngle
 		deltaAngle = (x - xOrigin) * 0.001f;
 
 		// update camera's direction
-		cameraRotX = sin(angle + deltaAngle);
-		cameraRotY = -cos(angle + deltaAngle);
+		cameraRotX = -sin(angle + deltaAngle);
+		cameraRotY = cos(angle + deltaAngle);
+		
+		FBXSDK_printf("cameraRotX: %f, cameraRotY: %f, x: %d\n\n", cameraRotX, cameraRotY, x);
+	}
+	else {
+		FBXSDK_printf("nothing \n\n");
 	}
 }
 
@@ -338,6 +430,7 @@ void ModelReconstruct::activateMotionFunc()
 
 void ModelReconstruct::mouseFunc(int button, int state, int x, int y)
 {
+	
 	// only start motion if the left button is pressed
 	if (button == GLUT_LEFT_BUTTON) {
 
@@ -370,10 +463,12 @@ void ModelReconstruct::keyUpFunc(unsigned char key, int x, int y)
 	case 'w':
 	case 's':
 		cameraOffY = 0.0f;
+		deltaMove = 0.0f;
 		break;
 	case 'a':
 	case 'd':
 		cameraOffX = 0.0f;
+		deltaMove = 0.0f;
 		break;
 	default:
 		break;
@@ -391,6 +486,11 @@ void ModelReconstruct::activeKeyUpFunc()
 	glutKeyboardUpFunc(::keyUpCallBack);
 }
 
+void ModelReconstruct::activeIdleFunc()
+{
+	currModelRec = this;
+	glutIdleFunc(::displayCallBack);
+}
 void ModelReconstruct::caclNormal(FbxMesh *mesh, int vertexIndex, int vertexCounter, int polygonSize, FbxVector4 &normal)
 {
 	if (mesh->GetElementNormalCount() < 1) {
@@ -562,4 +662,40 @@ bool ModelReconstruct::loadGLTextures()
 #endif
 	}
 	return status;
+}
+
+
+void ModelReconstruct::reshapeFunc(int w, int h)
+{
+	// Prevent a divide by zero, when window is too short
+	if (h == 0)
+		h = 1;
+
+	float ratio = w * 1.0 / h;
+
+	// Use the Projection Matrix
+	glMatrixMode(GL_PROJECTION);
+
+	// Reset Matrix
+	glLoadIdentity();
+
+	// Set the viewport to be the entire window
+	glViewport(0, 0, w, h);
+
+	// Set the correct perspective.
+	gluPerspective(120.0f, ratio, 1.0f, 80000.0f);
+
+	// Get Back to the Modelview
+	glMatrixMode(GL_MODELVIEW);
+}
+
+void reshapeCallBack(int w, int h)
+{
+	currModelRec->reshapeFunc(w, h);
+}
+
+void ModelReconstruct::activeReshapFunc()
+{
+	currModelRec = this;
+	glutReshapeFunc(::reshapeCallBack);
 }

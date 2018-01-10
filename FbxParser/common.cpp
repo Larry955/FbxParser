@@ -42,3 +42,38 @@ bool isNotEmpty(FbxString str)
 {
 	return (str == nullptr || str == FbxString("")) ? false : true;
 }
+
+void displayString(const char* pHeader, const char* pValue, const char* pSuffix)
+{
+	FbxString lString;
+
+	lString = pHeader;
+	lString += pValue;
+	lString += pSuffix;
+	lString += "\n";
+	FBXSDK_printf(lString);
+}
+
+
+void displayBool(const char* pHeader, bool pValue, const char* pSuffix)
+{
+	FbxString lString;
+
+	lString = pHeader;
+	lString += pValue ? "true" : "false";
+	lString += pSuffix;
+	lString += "\n";
+	FBXSDK_printf(lString);
+}
+
+
+void displayInt(const char* pHeader, int pValue, const char* pSuffix)
+{
+	FbxString lString;
+
+	lString = pHeader;
+	lString += pValue;
+	lString += pSuffix;
+	lString += "\n";
+	FBXSDK_printf(lString);
+}

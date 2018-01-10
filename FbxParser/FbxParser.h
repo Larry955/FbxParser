@@ -33,7 +33,7 @@ public:
 	void displayGlobalLightSettings(FbxGlobalSettings *pGlobalSettings);		//display global light settings
 	void displayHierarchy(FbxScene *pScene);		//display hierarchy of the fbx model
 	void displayContent(FbxScene *pScene);		//display info of all the nodes, such as mesh, skeleton, marker, etc
-
+	void displayPose(FbxScene *pScene);		//display pose of the input model
 
 private:
 	FbxManager *pManager;

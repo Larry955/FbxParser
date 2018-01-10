@@ -25,7 +25,7 @@ static GLfloat angle = 0.0f;
 
 //actual vector representing the camera's direction
 static GLfloat cameraRotX = 0.0f;
-static GLfloat cameraRotY = -1.0f;
+static GLfloat cameraRotY = 1.0f;
 
 //XZ offset of the camera
 static GLfloat cameraOffX = 0.0f;
@@ -34,13 +34,13 @@ static GLfloat cameraOffZ = 0.0f;
 
 //position of camera
 static GLfloat cameraPosX = 0.0;
-static GLfloat cameraPosY = -40.0f;
-static GLfloat cameraPosZ = 50.0f;
+static GLfloat cameraPosY = -60.0f;
+static GLfloat cameraPosZ = 100.0f;
 
 // the key states. These variables will be zero
 //when no key is being presses
 static float deltaAngle = 0.0f;
-static float deltaMove = 0;
+static float deltaMove = 0.0f;
 static int xOrigin = -1;
 
 class ModelReconstruct{
@@ -68,6 +68,12 @@ public:
 	void activeKeyUpFunc();
 	void keyUpFunc(unsigned char key, int x, int y);
 
+	void activeIdleFunc();
+	void idlefunc();
+
+	void activeReshapFunc();
+	void reshapeFunc(int w, int h);
+
 	void drawGrid(const FbxAMatrix & pTransform);
 	void loop();			//used for glutMainLoop()
 
@@ -78,7 +84,7 @@ private:
 
 	bool loadGLTextures();
 
-	void computerPos(GLfloat cameraOffX, GLfloat cameraOffY);
+	void computerPos(GLfloat deltaMode);
 	//void textureMapping();
 	void initModelSpace();
 	void resetTransformFactor();
