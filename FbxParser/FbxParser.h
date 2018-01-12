@@ -11,8 +11,8 @@
 class FbxParser
 {
 public:
-	FbxParser(FbxString fbxFile);	//ctor
-	~FbxParser();
+	FbxParser(FbxString fbxFile);	//constructor
+	~FbxParser();			//deconstructor
 
 	FbxParser(const FbxParser&) = delete;	//copy constructor/operator= is forbidden
 	FbxParser& operator=(const FbxParser&) = delete;
@@ -34,6 +34,8 @@ public:
 	void displayHierarchy(FbxScene *pScene);		//display hierarchy of the fbx model
 	void displayContent(FbxScene *pScene);		//display info of all the nodes, such as mesh, skeleton, marker, etc
 	void displayPose(FbxScene *pScene);		//display pose of the input model
+
+	void covertFormat();	//convert format
 
 private:
 	FbxManager *pManager;

@@ -7,6 +7,12 @@ pManager(nullptr), pScene(nullptr), pMesh(nullptr), fbxFile(fbxFile), textureFil
 	initFbxObjects();
 }
 
+FbxParser::~FbxParser()
+{
+	pManager->Destroy();
+}
+
+
 void FbxParser::initFbxObjects()
 {
 	//create the FBX manager which is the object allocator for almost all the classes in the SDK
@@ -316,20 +322,20 @@ void FbxParser::displayPose(FbxScene *pScene)
 
 		displayInt("    Number of items in the pose: ", lPose->GetCount());
 
-		displayString("", "");
-
+		displayString("pose: ", "");
+		
 		for (j = 0; j<lPose->GetCount(); j++)
 		{
 			lName = lPose->GetNodeName(j).GetCurrentName();
-			displayString("    Item name: ", lName.Buffer());
-
+			//displayString("    Item name: ", lName.Buffer());
+			FBXSDK_printf("Item %d: %s\n", j, lName);
 			if (!lPose->IsBindPose())
 			{
 				// Rest pose can have local matrix
 				displayBool("    Is local space matrix: ", lPose->IsLocalMatrix(j));
 			}
 
-			displayString("    Matrix value: ", "");
+			//displayString("    Matrix value: ", "");
 
 			FbxString lMatrixValue;
 
@@ -572,4 +578,52 @@ void FbxParser::displaySkeleton(FbxNode *node)
 
 	FbxColor color = skeleton->GetLimbNodeColor();
 	FBXSDK_printf("color:	red: %lf, green: %lf, blue: %lf\n", color[0], color[1], color[2]);
+}
+
+void FbxParser::covertFormat()
+{
+	const char* lFileTypes[] =
+	{
+		"_dae.dae", "Collada DAE (*.dae)",
+		"_obj.obj", "Alias OBJ (*.obj)",
+		"_dxf.dxf", "AutoCAD DXF (*.dxf)"
+	};
+	const size_t lFileNameLength = strlen(fbxFile.Buffer());
+	char* lNewFileName = new char[lFileNameLength + 64];
+	FBXSDK_strcpy(lNewFileName, lFileNameLength + 64, fbxFile.Buffer());
+
+	const size_t lFileTypeCount = sizeof(lFileTypes) / sizeof(lFileTypes[0]) / 2;
+
+	for (size_t i = 0; i<lFileTypeCount; ++i)
+	{
+		// Retrieve the writer ID according to the description of file format.
+		int lFormat = pManager->GetIOPluginRegistry()->FindWriterIDByDescription(lFileTypes[i * 2 + 1]);
+
+		// Construct the output file name.
+		FBXSDK_strcpy(lNewFileName + lFileNameLength, 60, lFileTypes[i * 2]);
+
+		// Create an exporter.
+		FbxExporter* lExporter = FbxExporter::Create(pManager, "");
+
+		// Initialize the exporter.
+		bool lResult = lExporter->Initialize(lNewFileName, lFormat, pManager->GetIOSettings());
+		if (!lResult)
+		{
+			FBXSDK_printf("%s:\tCall to FbxExporter::Initialize() failed.\n", lFileTypes[i * 2 + 1]);
+			FBXSDK_printf("Error returned: %s\n\n", lExporter->GetStatus().GetErrorString());
+		}
+		else
+		{
+			// Export the scene.
+			lResult = lExporter->Export(pScene);
+			if (!lResult)
+			{
+				FBXSDK_printf("Call to FbxExporter::Export() failed.\n");
+			}
+		}
+
+		// Destroy the exporter.
+		lExporter->Destroy();
+	}
+	delete[] lNewFileName;
 }
