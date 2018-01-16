@@ -84,6 +84,7 @@
     <ClInclude Include="FbxParser.h" />
     <ClInclude Include="ModelReconstruct.h" />
     <ClInclude Include="RGBImgStructure.h" />
+    <ClInclude Include="stb_image.h" />
     <ClInclude Include="tgaParser.h" />
   </ItemGroup>
   <ItemGroup>

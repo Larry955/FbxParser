@@ -1,11 +1,12 @@
 #ifndef MODELRECONSTRUCT_H
 #define MODELRECONSTRUCT_H
 
+#include <gl\glew.h>
+#include <gl\GLAux.h>
 #include <gl\glut.h>
+
 #include "FbxParser.h"
 #include "RGBImgStructure.h"
-#include <Magick++.h>
-using namespace Magick;
 
 
 class ModelReconstruct;
@@ -84,7 +85,7 @@ private:
 
 	bool loadGLTextures();
 
-	void computerPos(GLfloat deltaMode);
+	void computePos(GLfloat deltaMode);
 	//void textureMapping();
 	void initModelSpace();
 	void resetTransformFactor();

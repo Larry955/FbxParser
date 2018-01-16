@@ -226,11 +226,11 @@ void FbxParser::displayContent(FbxNode *node)
 	}
 	else {
 		attributeType = node->GetNodeAttribute()->GetAttributeType();
-
+		//display different informations according to the attribute type of node
 		switch (attributeType)
 		{
 		case fbxsdk::FbxNodeAttribute::eMarker:
-			displayMarker(node);
+			displayMarker(node);	
 			break;
 		case fbxsdk::FbxNodeAttribute::eSkeleton:
 			displaySkeleton(node);
@@ -261,7 +261,6 @@ void FbxParser::displayTexture(FbxNode *node)
 
 				int layeredTextureCount = prop.GetSrcObjectCount<FbxLayeredTexture>();
 				if (layeredTextureCount > 0) {
-					FBXSDK_printf("layeredTextureCount\n");
 					for (int layerIndex = 0; layerIndex != layeredTextureCount; ++layerIndex) {
 						FbxLayeredTexture *layeredTexture = prop.GetSrcObject<FbxLayeredTexture>(layerIndex);
 						int count = layeredTexture->GetSrcObjectCount<FbxTexture>();
@@ -274,7 +273,6 @@ void FbxParser::displayTexture(FbxNode *node)
 					}
 				}
 				else {
-					FBXSDK_printf("textureName\n");
 					int textureCount = prop.GetSrcObjectCount<FbxTexture>();
 					for (int i = 0; i != textureCount; ++i) {
 						FbxFileTexture *fileTexture = FbxCast<FbxFileTexture>(prop.GetSrcObject<FbxFileTexture>(i));
@@ -542,7 +540,7 @@ void FbxParser::displayMesh(FbxNode *node)
 
 void FbxParser::displaySkeleton(FbxNode *node)
 {
-	FBXSDK_printf("\n\n");
+	FBXSDK_printf("\n\n-----------------------Skeleton---------------------------\n\n");
 	FbxSkeleton *skeleton = (FbxSkeleton*)node->GetNodeAttribute();
 
 	FbxString skeletonInfo("");
@@ -550,10 +548,10 @@ void FbxParser::displaySkeleton(FbxNode *node)
 	FBXSDK_printf(skeletonInfo.Buffer());
 
 	int srcObjCount = ((FbxObject*)skeleton)->GetSrcObjectCount<FbxObjectMetaData>();
-	if (srcObjCount > 0)
+	/*if (srcObjCount > 0)
 		FBXSDK_printf("meta data connections\n");
 	else
-		FBXSDK_printf("meta data connections failed\n");
+		FBXSDK_printf("meta data connections failed\n");*/
 
 	for (int i = 0; i != srcObjCount; ++i) {
 		FbxObjectMetaData *metaData = ((FbxObject*)skeleton)->GetSrcObject<FbxObjectMetaData>(i);
@@ -577,7 +575,7 @@ void FbxParser::displaySkeleton(FbxNode *node)
 	}
 
 	FbxColor color = skeleton->GetLimbNodeColor();
-	FBXSDK_printf("color:	red: %lf, green: %lf, blue: %lf\n", color[0], color[1], color[2]);
+	FBXSDK_printf("limb node color:	red: %lf, green: %lf, blue: %lf\n", color[0], color[1], color[2]);
 }
 
 void FbxParser::covertFormat()

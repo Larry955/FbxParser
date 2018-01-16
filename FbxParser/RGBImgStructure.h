@@ -1,8 +1,9 @@
 #ifndef RGBIMGSTRUCTURE_H
 #define RGBIMGSTRUCTURE_H
-#include "tgaParser.h"
+#include "tgaParser.h"	//used for read *.tga, but we failed to get the pixel data from the *.tga image
 #include <gl\glut.h>
 
+// the format of texture, *.tga, *.dds, *.bmp
 enum eTextureType
 {
 	TGA,
@@ -12,9 +13,9 @@ enum eTextureType
 };
 
 typedef struct __RGBImgStructure{
-	unsigned long width;
-	unsigned long height;
-	unsigned char *data;
+	unsigned long width;	//width of the texure image
+	unsigned long height;	//height
+	unsigned char *data;	//data
 }RGBImgStructure;
 
 eTextureType getFileSuffix(const char *fileName);
