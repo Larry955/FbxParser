@@ -2,6 +2,8 @@
 #define FBXPARSER_H
 
 #include "common.h"
+#include <vector>
+using std::vector;
 
 #ifdef IOS_REF
 #undef  IOS_REF
@@ -17,11 +19,14 @@ public:
 	FbxParser(const FbxParser&) = delete;	//copy constructor/operator= is forbidden
 	FbxParser& operator=(const FbxParser&) = delete;
 	
-	FbxManager* getFbxManager(){ return pManager; }	//get FbxManager
+	FbxManager* getFbxManager() { return pManager; }	//get FbxManager
 	FbxScene* getFbxScene(){ return pScene; }	//get FbxScene
 	FbxString getFbxFileName() { return fbxFile; }		//get file name
-	FbxVector4* getFbxVector4(){ return controlPoints; }	//get control points of the fbx model
-	
+	FbxVector4* getControlPoints() { return controlPoints; }	//get control points of the fbx model
+	int getPolygonCount() { return polygonCount; }		//get polygon count
+	vector<FbxVector4> getPolygonPoints() { return polygonPoints; }		//get polygon points
+	vector<FbxVector4> getNormals() { return normals; }		//get normals
+	vector<FbxVector4> getTextureUVs() { return uvs; }		//get texture uvs
 	FbxMesh* getFbxMesh(){ return pMesh; }		//get FbxMesh
 	void setFbxMesh(FbxMesh *mesh){ this->pMesh = pMesh; }	//set FbxMesh, it's useless actually
 
@@ -45,7 +50,14 @@ private:
 	FbxString textureFile;
 
 	FbxVector4 *controlPoints;
-	FbxVector4 *polygonPoints;
+	vector<FbxVector4> polygonPoints;
+	int polygonCount;
+
+	vector<FbxVector4> normals;
+	vector<FbxVector4> uvs;
+
+	void getNormal(FbxMesh *mesh, int vertexIndex, int vertexCounter, int polygonSize, vector<FbxVector4> &normals);
+	void getTextureUV(FbxMesh *mesh, int vertexIndex, int vertexCounter, int polygonSize, vector<FbxVector4> &uvs);
 
 	void initFbxObjects();	//initialize FbxManage, FbxScene,etc
 
@@ -57,7 +69,9 @@ private:
 	void displaySkeleton(FbxNode *node);
 	void displayMesh(FbxNode *node);
 	void displayTexture(FbxNode *node);
+
 	void displayTexture(FbxScene *pScene);
+
 };
  
 #endif 

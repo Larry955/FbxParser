@@ -89,7 +89,6 @@ private:
 	//void textureMapping();
 	void initModelSpace();
 	void resetTransformFactor();
-	void caclNormal(FbxMesh *mesh, int vertexIndex, int vertexCounter, int polygonSize, FbxVector4 &normal);
 };
 
 

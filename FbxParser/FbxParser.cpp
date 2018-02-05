@@ -2,7 +2,7 @@
 #include <assert.h>
 
 FbxParser::FbxParser(FbxString fbxFile) :
-pManager(nullptr), pScene(nullptr), pMesh(nullptr), fbxFile(fbxFile), textureFile(""), controlPoints(), polygonPoints()
+pManager(nullptr), pScene(nullptr), pMesh(nullptr), fbxFile(fbxFile), textureFile(""), controlPoints(), polygonPoints(), polygonCount()
 {
 	initFbxObjects();
 }
@@ -534,9 +534,136 @@ void FbxParser::displayMesh(FbxNode *node)
 			}*/
 		}
 	}
+
+
+	//Polygon Counts
+	polygonCount = pMesh->GetPolygonCount();
+	int vertexCounter = 0;
+
+	FBXSDK_printf("\n\n---------------Polygon Points---------------------\n\n");
+	FBXSDK_printf("polygon points count %d\n", polygonCount);
+	polygonPoints.reserve(polygonCount * 4);
+	normals.reserve(polygonCount * 4);
+	uvs.reserve(polygonCount * 4);
+
+	for (int i = 0; i != polygonCount; ++i) {
+		int polygonSize = pMesh->GetPolygonSize(i);
+	//	normals.resize(polygonSize);
+
+		for (int j = 0; j != polygonSize; ++j) {
+			int vertexIndex = pMesh->GetPolygonVertex(i, j);
+			FbxVector4 vec = controlPoints[vertexIndex];
+			getNormal(pMesh, vertexIndex, vertexCounter, polygonSize, normals);	
+			getTextureUV(pMesh, vertexIndex, vertexCounter, polygonSize, uvs);
+			polygonPoints.push_back(vec);
+			++vertexCounter;
+		}
+	}
+
+	FBXSDK_printf("UV layer count: %d\n", pMesh->GetUVLayerCount());		//return 1
+	FBXSDK_printf("UV texture count: %d\n", pMesh->GetTextureUVCount());	//return 1970 in run.fbx
+	FbxGeometryElementUV *uv = pMesh->GetElementUV(0);
+	FBXSDK_printf("name: %s\n", uv->GetName());	//return UV_channel_1
+
 	//glutDisplayFunc(displayModel);
 	FBXSDK_printf("\n\n");
 }
+
+
+void FbxParser::getNormal(FbxMesh *mesh, int vertexIndex, int vertexCounter, int polygonSize, vector<FbxVector4> &normals)
+{
+	if (mesh->GetElementNormalCount() < 1) {
+		throw std::exception("invalid normal number\n");
+	}
+
+	FbxVector4 normal;
+	FbxGeometryElementNormal *vertexNormal = mesh->GetElementNormal(0);
+	switch (vertexNormal->GetMappingMode())
+	{
+	case FbxGeometryElement::eByControlPoint:
+		switch (vertexNormal->GetReferenceMode())
+		{
+		case FbxGeometryElement::eDirect:
+			normal = vertexNormal->GetDirectArray().GetAt(vertexCounter).mData;
+			break;
+		case FbxGeometryElement::eIndexToDirect:
+		{
+			int index = vertexNormal->GetIndexArray().GetAt(vertexIndex);
+			normal = vertexNormal->GetDirectArray().GetAt(index).mData;
+			break;
+		}
+		default:
+			throw std::exception("Invalid Reference");
+		}
+		break;
+	case FbxGeometryElement::eByPolygonVertex:
+		switch (vertexNormal->GetReferenceMode())
+		{
+		case FbxGeometryElement::eDirect:
+			normal = vertexNormal->GetDirectArray().GetAt(vertexCounter).mData;
+			break;
+		case FbxGeometryElement::eIndexToDirect:
+		{
+			int index = vertexNormal->GetIndexArray().GetAt(vertexCounter);
+			normal = vertexNormal->GetDirectArray().GetAt(index).mData;
+			break;
+		}
+		default:
+			throw std::exception("Invalid Reference");
+		}
+	default:
+		break;
+	}
+	normals.push_back(normal);
+}
+
+void FbxParser::getTextureUV(FbxMesh *mesh, int vertexIndex, int vertexCounter, int polygonSize, vector<FbxVector4> &uvs)
+{
+	if (mesh->GetElementNormalCount() < 1) {
+		throw std::exception("invalid normal number\n");
+	}
+	FbxVector4 uv;
+	FbxGeometryElementUV *vertexUV = mesh->GetElementUV(0);
+	switch (vertexUV->GetMappingMode())
+	{
+	case FbxGeometryElement::eByControlPoint:
+		switch (vertexUV->GetReferenceMode())
+		{
+		case FbxGeometryElement::eDirect:
+			uv = vertexUV->GetDirectArray().GetAt(vertexCounter).mData;
+			break;
+		case FbxGeometryElement::eIndexToDirect:
+		{
+			int index = vertexUV->GetIndexArray().GetAt(vertexIndex);
+			uv = vertexUV->GetDirectArray().GetAt(index);
+			break;
+		}
+		default:
+			throw std::exception("Invalid Reference");
+			break;
+		}
+	case FbxGeometryElement::eByPolygonVertex:
+		switch (vertexUV->GetReferenceMode())
+		{
+		case FbxGeometryElement::eDirect:
+			uv = vertexUV->GetDirectArray().GetAt(vertexCounter);
+			break;
+		case FbxGeometryElement::eIndexToDirect:
+		{
+			int index = vertexUV->GetIndexArray().GetAt(vertexIndex);
+			uv = vertexUV->GetDirectArray().GetAt(index);
+			break;
+		}
+		default:
+			throw std::exception("Invalid Reference");
+			break;
+		}
+	default:
+		break;
+	}
+	uvs.push_back(uv);
+}
+
 
 void FbxParser::displaySkeleton(FbxNode *node)
 {

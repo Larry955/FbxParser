@@ -113,73 +113,63 @@ void ModelReconstruct::display()
 	glBindTexture(GL_TEXTURE_2D, textureArr[0]);
 	
 	//Polygon Points
-	int polygonCount = parser->getFbxMesh()->GetPolygonCount();
-	int vertexCounter = 0;
-	vector<FbxVector4> polygonVertex;
-	vector<FbxVector4> vertexNormal;
 
-	FBXSDK_printf("\n\n---------------Polygon Points---------------------\n\n");
-	FBXSDK_printf("polygon points count %d\n", polygonCount);
+	vector<FbxVector4> polygonPoints = parser->getPolygonPoints();
+	vector<FbxVector4> normals = parser->getNormals();
+	vector<FbxVector4> uvs = parser->getTextureUVs();
 
-	for (int i = 0; i != polygonCount; ++i) {
-		int polygonSize = parser->getFbxMesh()->GetPolygonSize(i);
-		//FBXSDK_printf("polygonSize: %d\n", polygonSize);
-
-		vertexNormal.resize(polygonSize);
-
-		for (int j = 0; j != polygonSize; ++j) {
-			int vertexIndex = parser->getFbxMesh()->GetPolygonVertex(i, j);
-			FbxVector4 vec = (parser->getFbxVector4())[vertexIndex];
-			//display3DVector("vec: ", vec);
-			caclNormal(parser->getFbxMesh(), vertexIndex, vertexCounter, polygonSize, vertexNormal[j]);
+	int polygonPointsIndex = 0;
+	int polygonIndex = 0;
+	while (polygonPointsIndex < polygonPoints.size()) {
+		int polygonSize = parser->getFbxMesh()->GetPolygonSize(polygonIndex++);
+		if (polygonSize == 3) {
+			glEnable(GL_NORMALIZE);	//normalize
+			glColor3f(1.0f, 0.0f, 0.0f);
 			
-			polygonVertex.push_back(vec);
-			++vertexCounter;
-		}
-		
-		switch (polygonSize)
-		{
-		case 3:
-			glEnable(GL_NORMALIZE);	//normalize
-			glColor3f(1.0f, 0.0f, 0.0f);
 			glBegin(GL_TRIANGLES);
-			glNormal3f(static_cast<float>(vertexNormal[0].mData[0]), static_cast<float>(vertexNormal[0].mData[1]), static_cast<float>(vertexNormal[0].mData[2]));
-			glVertex3f(polygonVertex[0].mData[0], polygonVertex[0].mData[1], polygonVertex[0].mData[2]);
-			glNormal3f(static_cast<float>(vertexNormal[1].mData[0]), static_cast<float>(vertexNormal[1].mData[1]), static_cast<float>(vertexNormal[1].mData[2]));
-			glVertex3f(polygonVertex[1].mData[0], polygonVertex[1].mData[1], polygonVertex[1].mData[2]);
-			glNormal3f(static_cast<float>(vertexNormal[2].mData[0]), static_cast<float>(vertexNormal[2].mData[1]), static_cast<float>(vertexNormal[2].mData[2]));
-			glVertex3f(polygonVertex[2].mData[0], polygonVertex[2].mData[1], polygonVertex[2].mData[2]);
+			glNormal3f(static_cast<float>(normals[polygonPointsIndex].mData[0]), static_cast<float>(normals[polygonPointsIndex].mData[1]), static_cast<float>(normals[polygonPointsIndex].mData[2]));
+			glVertex3f(polygonPoints[polygonPointsIndex].mData[0], polygonPoints[polygonPointsIndex].mData[1], polygonPoints[polygonPointsIndex].mData[2]);
+			polygonPointsIndex += 1;
+
+			glNormal3f(static_cast<float>(normals[polygonPointsIndex].mData[0]), static_cast<float>(normals[polygonPointsIndex].mData[1]), static_cast<float>(normals[polygonPointsIndex].mData[2]));
+			glVertex3f(polygonPoints[polygonPointsIndex].mData[0], polygonPoints[polygonPointsIndex].mData[1], polygonPoints[polygonPointsIndex].mData[2]);
+			polygonPointsIndex += 1;
+
+			glNormal3f(static_cast<float>(normals[polygonPointsIndex].mData[0]), static_cast<float>(normals[polygonPointsIndex].mData[1]), static_cast<float>(normals[polygonPointsIndex].mData[2]));
+			glVertex3f(polygonPoints[polygonPointsIndex].mData[0], polygonPoints[polygonPointsIndex].mData[1], polygonPoints[polygonPointsIndex].mData[2]);
+			polygonPointsIndex += 1;
+
 			glEnd();
-			break;
-		case 4:
+		}
+		else if (polygonSize == 4) {
 			glEnable(GL_NORMALIZE);	//normalize
 			glColor3f(1.0f, 0.0f, 0.0f);
-
+			
 			glBegin(GL_QUADS);
-			glNormal3f(static_cast<float>(vertexNormal[0].mData[0]), static_cast<float>(vertexNormal[0].mData[1]), static_cast<float>(vertexNormal[0].mData[2]));
-			glVertex3f(polygonVertex[0].mData[0], polygonVertex[0].mData[1], polygonVertex[0].mData[2]);
-			glNormal3f(static_cast<float>(vertexNormal[1].mData[0]), static_cast<float>(vertexNormal[1].mData[1]), static_cast<float>(vertexNormal[1].mData[2]));
-			glVertex3f(polygonVertex[1].mData[0], polygonVertex[1].mData[1], polygonVertex[1].mData[2]);
-			glNormal3f(static_cast<float>(vertexNormal[2].mData[0]), static_cast<float>(vertexNormal[2].mData[1]), static_cast<float>(vertexNormal[2].mData[2]));
-			glVertex3f(polygonVertex[2].mData[0], polygonVertex[2].mData[1], polygonVertex[2].mData[2]);
-			glNormal3f(static_cast<float>(vertexNormal[3].mData[0]), static_cast<float>(vertexNormal[3].mData[1]), static_cast<float>(vertexNormal[3].mData[2]));
-			glVertex3f(polygonVertex[3].mData[0], polygonVertex[3].mData[1], polygonVertex[3].mData[2]);
+			glNormal3f(static_cast<float>(normals[polygonPointsIndex].mData[0]), static_cast<float>(normals[polygonPointsIndex].mData[1]), static_cast<float>(normals[polygonPointsIndex].mData[2]));
+			glVertex3f(polygonPoints[polygonPointsIndex].mData[0], polygonPoints[polygonPointsIndex].mData[1], polygonPoints[polygonPointsIndex].mData[2]);
+			polygonPointsIndex += 1;
+
+			glNormal3f(static_cast<float>(normals[polygonPointsIndex].mData[0]), static_cast<float>(normals[polygonPointsIndex].mData[1]), static_cast<float>(normals[polygonPointsIndex].mData[2]));
+			glVertex3f(polygonPoints[polygonPointsIndex].mData[0], polygonPoints[polygonPointsIndex].mData[1], polygonPoints[polygonPointsIndex].mData[2]);
+			polygonPointsIndex += 1;
+
+			glNormal3f(static_cast<float>(normals[polygonPointsIndex].mData[0]), static_cast<float>(normals[polygonPointsIndex].mData[1]), static_cast<float>(normals[polygonPointsIndex].mData[2]));
+			glVertex3f(polygonPoints[polygonPointsIndex].mData[0], polygonPoints[polygonPointsIndex].mData[1], polygonPoints[polygonPointsIndex].mData[2]);
+			polygonPointsIndex += 1;
+
+			glNormal3f(static_cast<float>(normals[polygonPointsIndex].mData[0]), static_cast<float>(normals[polygonPointsIndex].mData[1]), static_cast<float>(normals[polygonPointsIndex].mData[2]));
+			glVertex3f(polygonPoints[polygonPointsIndex].mData[0], polygonPoints[polygonPointsIndex].mData[1], polygonPoints[polygonPointsIndex].mData[2]);
+			polygonPointsIndex += 1;
+
 			glEnd();
-			break;
-		default:
-			FBXSDK_printf("undefined polygon size: %d\n", parser->getFbxMesh()->GetPolygonSize(i));
-			break;
 		}
-	
-		polygonVertex.clear();
-		vertexNormal.clear();
+		else {
+			FBXSDK_printf("undefined polygon size: %d\n", polygonSize);
+		}
 	}
 
 	glDisable(GL_TEXTURE_2D);
-	FBXSDK_printf("UV layer count: %d\n", parser->getFbxMesh()->GetUVLayerCount());		//return 1
-	FBXSDK_printf("UV texture count: %d\n", parser->getFbxMesh()->GetTextureUVCount());	//return 1970 in run.fbx
-	FbxGeometryElementUV *uv = parser->getFbxMesh()->GetElementUV(0);
-	FBXSDK_printf("name: %s\n", uv->GetName());	//return UV_channel_1
 
 	glPopMatrix();
 
@@ -416,50 +406,6 @@ void ModelReconstruct::activeIdleFunc()
 {
 	currModelRec = this;
 	glutIdleFunc(::displayCallBack);
-}
-void ModelReconstruct::caclNormal(FbxMesh *mesh, int vertexIndex, int vertexCounter, int polygonSize, FbxVector4 &normal)
-{
-	if (mesh->GetElementNormalCount() < 1) {
-		throw std::exception("invalid normal number\n");
-	}
-	FbxGeometryElementNormal *vertexNormal = mesh->GetElementNormal(0);
-	switch (vertexNormal->GetMappingMode())
-	{
-	case FbxGeometryElement::eByControlPoint:
-		switch (vertexNormal->GetReferenceMode())
-		{
-		case FbxGeometryElement::eDirect:
-			vertexNormal->GetDirectArray().GetCount();
-			normal = vertexNormal->GetDirectArray().GetAt(vertexCounter).mData;
-			break;
-		case FbxGeometryElement::eIndexToDirect:
-		{
-			int index = vertexNormal->GetIndexArray().GetAt(vertexIndex);
-			normal = vertexNormal->GetDirectArray().GetAt(index).mData;
-			break;
-		}
-		default:
-			throw std::exception("Invalid Reference");
-		}
-		break;
-	case FbxGeometryElement::eByPolygonVertex:
-		switch (vertexNormal->GetReferenceMode())
-		{
-		case FbxGeometryElement::eDirect:
-			normal = vertexNormal->GetDirectArray().GetAt(vertexCounter).mData;
-			break;
-		case FbxGeometryElement::eIndexToDirect:
-		{
-			int index = vertexNormal->GetIndexArray().GetAt(vertexCounter);
-			normal = vertexNormal->GetDirectArray().GetAt(index).mData;
-			break;
-		}
-		default:
-			throw std::exception("Invalid Reference");
-		}
-	default:
-		break;
-	}
 }
 
 void ModelReconstruct::loop()

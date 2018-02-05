@@ -6,14 +6,13 @@ using namespace std;
 
 int main(int argc, char **argv)
 {
-	FbxParser *parser = new FbxParser(FbxString("run"));
+	FbxParser *parser = new FbxParser(FbxString("lt"));
 	bool loadResult = parser->loadScene();
 	if (loadResult) {
 		parser->displayGlobalLightSettings(&parser->getFbxScene()->GetGlobalSettings());		//display global light settings
 		parser->displayHierarchy(parser->getFbxScene());		//display hierarchy of model
 		parser->displayContent(parser->getFbxScene());	//display 
 		parser->displayPose(parser->getFbxScene());
-		
 	}
 	else {
 		FBXSDK_printf("error: load scene failed.\n\n");
