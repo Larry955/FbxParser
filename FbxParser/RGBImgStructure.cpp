@@ -56,16 +56,16 @@ bool loadTGA(const char* fileName, GLuint pTextureObject)
 		tga_convert_depth(&lTGAImage, 24);
 
 		// Transfer the texture date into GPU
-		glGenTextures(1, &pTextureObject);
+		/*glGenTextures(1, &pTextureObject);
 		glBindTexture(GL_TEXTURE_2D, pTextureObject);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-		glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+		glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);*/
 		glTexImage2D(GL_TEXTURE_2D, 0, 3, lTGAImage.width, lTGAImage.height, 0, GL_BGR,
 			GL_UNSIGNED_BYTE, lTGAImage.image_data);
-		glBindTexture(GL_TEXTURE_2D, 0);
+		//glBindTexture(GL_TEXTURE_2D, 0);
 
 		tga_free_buffers(&lTGAImage);
 

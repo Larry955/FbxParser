@@ -26,7 +26,7 @@ public:
 	int getPolygonCount() { return polygonCount; }		//get polygon count
 	vector<FbxVector4> getPolygonPoints() { return polygonPoints; }		//get polygon points
 	vector<FbxVector4> getNormals() { return normals; }		//get normals
-	vector<FbxVector4> getTextureUVs() { return uvs; }		//get texture uvs
+	vector<FbxVector2> getTextureUVs() { return uvs; }		//get texture uvs
 	FbxMesh* getFbxMesh(){ return pMesh; }		//get FbxMesh
 	void setFbxMesh(FbxMesh *mesh){ this->pMesh = pMesh; }	//set FbxMesh, it's useless actually
 
@@ -54,10 +54,10 @@ private:
 	int polygonCount;
 
 	vector<FbxVector4> normals;
-	vector<FbxVector4> uvs;
+	vector<FbxVector2> uvs;
 
-	void getNormal(FbxMesh *mesh, int vertexIndex, int vertexCounter, int polygonSize, vector<FbxVector4> &normals);
-	void getTextureUV(FbxMesh *mesh, int vertexIndex, int vertexCounter, int polygonSize, vector<FbxVector4> &uvs);
+	void getNormal(FbxMesh *mesh, int vertexIndex, int vertexCounter, vector<FbxVector4> &normals);
+	void getTextureUV(FbxMesh *mesh, vector<FbxVector2> &uvs);
 
 	void initFbxObjects();	//initialize FbxManage, FbxScene,etc
 

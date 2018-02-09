@@ -30,7 +30,7 @@ void ModelReconstruct::initModelSpace()
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
 	glutInitWindowPosition(100, 100);
 	glutInitWindowSize(800, 800);
-	glutCreateWindow("Reconstructed Model");
+	glutCreateWindow("Reconstructed FBX Model");
 
 
 	GLfloat mat_ambient[] = { 0.2, 0.2, 0.2, 1.0 };
@@ -43,7 +43,7 @@ void ModelReconstruct::initModelSpace()
 	glMaterialfv(GL_FRONT, GL_SPECULAR, mat_specular);
 	glMaterialfv(GL_FRONT, GL_SHININESS, mat_shininess);
 
-	GLfloat light0_diffuse[] = { 1.0, 0.0, 0.0, 1.0 };
+	GLfloat light0_diffuse[] = { 1.0, 1.0, 1.0, 1.0 };
 	GLfloat light0_position[] = { 1.0, 0.0, 1.0, 0.0 };
 	glLightfv(GL_LIGHT0, GL_DIFFUSE, light0_diffuse);
 	glLightfv(GL_LIGHT0, GL_POSITION, light0_position);
@@ -65,20 +65,20 @@ void ModelReconstruct::initModelSpace()
 	glEnable(GL_LIGHT0);
 	glEnable(GL_LIGHT1);
 	glEnable(GL_DEPTH_TEST);
-	glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+	//glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
 	gluPerspective(120, 1, 1, 80000);
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
-	FBXSDK_printf("cameraPosX: %f, cameraPosY: %f, cameraPosZ: %f\n\n", cameraPosX, cameraPosY, cameraPosZ);
+	//FBXSDK_printf("cameraPosX: %f, cameraPosY: %f, cameraPosZ: %f\n\n", cameraPosX, cameraPosY, cameraPosZ);
 
 	gluLookAt(cameraPosX, cameraPosY, cameraPosZ,
 		cameraPosX + cameraRotX, cameraPosY + cameraRotY, cameraPosZ,
 		0, 0, 1);
 
-	//loadGLTextures();
+	loadGLTextures();
 }
 
 void displayCallBack()
@@ -89,7 +89,7 @@ void displayCallBack()
 void ModelReconstruct::display()
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	
+
 	if (deltaMove) {
 		computePos(deltaMove);
 	}
@@ -99,7 +99,7 @@ void ModelReconstruct::display()
 	gluPerspective(120, 1, 1, 80000);
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
-	FBXSDK_printf("cameraPosX: %f, cameraPosY: %f, cameraPosZ: %f\n\n", cameraPosX, cameraPosY, cameraPosZ);
+	//FBXSDK_printf("cameraPosX: %f, cameraPosY: %f, cameraPosZ: %f\n\n", cameraPosX, cameraPosY, cameraPosZ);
 
 	gluLookAt(cameraPosX, cameraPosY, cameraPosZ,
 		cameraPosX + cameraRotX, cameraPosY + cameraRotY, cameraPosZ,
@@ -111,12 +111,24 @@ void ModelReconstruct::display()
 	glScalef(xScale, yScale, zScale);
 
 	glBindTexture(GL_TEXTURE_2D, textureArr[0]);
-	
-	//Polygon Points
 
+	//Polygon Points, Normals and UVs
 	vector<FbxVector4> polygonPoints = parser->getPolygonPoints();
 	vector<FbxVector4> normals = parser->getNormals();
-	vector<FbxVector4> uvs = parser->getTextureUVs();
+	vector<FbxVector2> uvs = parser->getTextureUVs();
+
+	//for (int i = 0; i != 24; ++i) {
+	//	if (i % 3 == 0)
+	//		FBXSDK_printf("\nuv: ");
+	//	FBXSDK_printf("%.10lf, %.10lf\n", uvs[i].mData[0], uvs[i].mData[1]);
+	//}
+
+	//for (int i = 0; i != 24; ++i) {
+	//	if (i % 3 == 0)
+	//		FBXSDK_printf("\nnormal: ");
+	//	FBXSDK_printf("%.10lf, %.10lf\n", normals[i].mData[0], normals[i].mData[1], normals[i].mData[2]);
+	//}
+
 
 	int polygonPointsIndex = 0;
 	int polygonIndex = 0;
@@ -124,18 +136,21 @@ void ModelReconstruct::display()
 		int polygonSize = parser->getFbxMesh()->GetPolygonSize(polygonIndex++);
 		if (polygonSize == 3) {
 			glEnable(GL_NORMALIZE);	//normalize
-			glColor3f(1.0f, 0.0f, 0.0f);
+			//glColor3f(1.0f, 0.0f, 0.0f);
 			
 			glBegin(GL_TRIANGLES);
 			glNormal3f(static_cast<float>(normals[polygonPointsIndex].mData[0]), static_cast<float>(normals[polygonPointsIndex].mData[1]), static_cast<float>(normals[polygonPointsIndex].mData[2]));
+			glTexCoord2f(static_cast<float>(uvs[polygonPointsIndex].mData[0]), static_cast<float>(uvs[polygonPointsIndex].mData[1]));
 			glVertex3f(polygonPoints[polygonPointsIndex].mData[0], polygonPoints[polygonPointsIndex].mData[1], polygonPoints[polygonPointsIndex].mData[2]);
 			polygonPointsIndex += 1;
 
 			glNormal3f(static_cast<float>(normals[polygonPointsIndex].mData[0]), static_cast<float>(normals[polygonPointsIndex].mData[1]), static_cast<float>(normals[polygonPointsIndex].mData[2]));
+			glTexCoord2f(static_cast<float>(uvs[polygonPointsIndex].mData[0]), static_cast<float>(uvs[polygonPointsIndex].mData[1]));
 			glVertex3f(polygonPoints[polygonPointsIndex].mData[0], polygonPoints[polygonPointsIndex].mData[1], polygonPoints[polygonPointsIndex].mData[2]);
 			polygonPointsIndex += 1;
 
 			glNormal3f(static_cast<float>(normals[polygonPointsIndex].mData[0]), static_cast<float>(normals[polygonPointsIndex].mData[1]), static_cast<float>(normals[polygonPointsIndex].mData[2]));
+			glTexCoord2f(static_cast<float>(uvs[polygonPointsIndex].mData[0]), static_cast<float>(uvs[polygonPointsIndex].mData[1]));
 			glVertex3f(polygonPoints[polygonPointsIndex].mData[0], polygonPoints[polygonPointsIndex].mData[1], polygonPoints[polygonPointsIndex].mData[2]);
 			polygonPointsIndex += 1;
 
@@ -143,22 +158,26 @@ void ModelReconstruct::display()
 		}
 		else if (polygonSize == 4) {
 			glEnable(GL_NORMALIZE);	//normalize
-			glColor3f(1.0f, 0.0f, 0.0f);
+			//glColor3f(1.0f, 1.0f, 0.0f);
 			
 			glBegin(GL_QUADS);
 			glNormal3f(static_cast<float>(normals[polygonPointsIndex].mData[0]), static_cast<float>(normals[polygonPointsIndex].mData[1]), static_cast<float>(normals[polygonPointsIndex].mData[2]));
+			glTexCoord2f(static_cast<float>(uvs[polygonPointsIndex].mData[0]), static_cast<float>(uvs[polygonPointsIndex].mData[1]));
 			glVertex3f(polygonPoints[polygonPointsIndex].mData[0], polygonPoints[polygonPointsIndex].mData[1], polygonPoints[polygonPointsIndex].mData[2]);
 			polygonPointsIndex += 1;
 
 			glNormal3f(static_cast<float>(normals[polygonPointsIndex].mData[0]), static_cast<float>(normals[polygonPointsIndex].mData[1]), static_cast<float>(normals[polygonPointsIndex].mData[2]));
+			glTexCoord2f(static_cast<float>(uvs[polygonPointsIndex].mData[0]), static_cast<float>(uvs[polygonPointsIndex].mData[1]));
 			glVertex3f(polygonPoints[polygonPointsIndex].mData[0], polygonPoints[polygonPointsIndex].mData[1], polygonPoints[polygonPointsIndex].mData[2]);
 			polygonPointsIndex += 1;
 
 			glNormal3f(static_cast<float>(normals[polygonPointsIndex].mData[0]), static_cast<float>(normals[polygonPointsIndex].mData[1]), static_cast<float>(normals[polygonPointsIndex].mData[2]));
+			glTexCoord2f(static_cast<float>(uvs[polygonPointsIndex].mData[0]), static_cast<float>(uvs[polygonPointsIndex].mData[1]));
 			glVertex3f(polygonPoints[polygonPointsIndex].mData[0], polygonPoints[polygonPointsIndex].mData[1], polygonPoints[polygonPointsIndex].mData[2]);
 			polygonPointsIndex += 1;
 
 			glNormal3f(static_cast<float>(normals[polygonPointsIndex].mData[0]), static_cast<float>(normals[polygonPointsIndex].mData[1]), static_cast<float>(normals[polygonPointsIndex].mData[2]));
+			glTexCoord2f(static_cast<float>(uvs[polygonPointsIndex].mData[0]), static_cast<float>(uvs[polygonPointsIndex].mData[1]));
 			glVertex3f(polygonPoints[polygonPointsIndex].mData[0], polygonPoints[polygonPointsIndex].mData[1], polygonPoints[polygonPointsIndex].mData[2]);
 			polygonPointsIndex += 1;
 
@@ -169,7 +188,7 @@ void ModelReconstruct::display()
 		}
 	}
 
-	glDisable(GL_TEXTURE_2D);
+	//glDisable(GL_TEXTURE_2D);
 
 	glPopMatrix();
 
@@ -196,11 +215,14 @@ void ModelReconstruct::displayModel()
 void ModelReconstruct::drawGrid(const FbxAMatrix & pTransform)
 {
 	
+
 	glPushMatrix();
 	glMultMatrixd(pTransform);
 
 	// Draw a grid 500*500
 	glDisable(GL_LIGHTING);	//disabled light before draw lines to make the color of grid works
+	glDisable(GL_TEXTURE_2D);
+
 	glColor3f(0.3f, 0.3f, 0.3f);
 	glLineWidth(1.0);
 	
@@ -247,6 +269,7 @@ void ModelReconstruct::drawGrid(const FbxAMatrix & pTransform)
 
 	}
 	glEnable(GL_LIGHTING);
+	glEnable(GL_TEXTURE_2D);
 	glPopMatrix();
 }
 
@@ -256,33 +279,38 @@ void ModelReconstruct::keyFunc(unsigned char key, int x, int y)
 
 	switch (key) {
 	case 'w':
+	case 'W':
 		deltaMove = 1.0f;
 		cameraOffY = 1.0f;
 		//xRot -= 2.0;
 		break;
 	case 's':
+	case 'S':
 		deltaMove = -1.0f;
 
 		cameraOffY = -1.0f;
 		//xRot += 2.0;
 		break;
 	case 'a':
+	case 'A':
 		cameraOffX = 1.0f;
 		zRot -= 2.0;
 		break;
 	case 'd':
+	case 'D':
 		zRot += 2.0;
 		break;
 	case 'z':
+	case 'Z':
 		xScale += 0.1;
 		yScale += 0.1;
 		zScale += 0.1;
 		break;
 	case 'x':
+	case 'X':
 		xScale -= 0.1;
 		yScale -= 0.1;
 		zScale -= 0.1;
-		FBXSDK_printf("sssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss");
 		break;
 	default:
 		FBXSDK_printf("undefined key: %c\n",key);
@@ -325,7 +353,7 @@ void ModelReconstruct::motionFunc(int x, int y)
 		cameraRotX = -sin(angle + deltaAngle);
 		cameraRotY = cos(angle + deltaAngle);
 		
-		FBXSDK_printf("cameraRotX: %f, cameraRotY: %f, x: %d\n\n", cameraRotX, cameraRotY, x);
+		//FBXSDK_printf("cameraRotX: %f, cameraRotY: %f, x: %d\n\n", cameraRotX, cameraRotY, x);
 	}
 	else {
 		FBXSDK_printf("nothing \n\n");
@@ -432,8 +460,10 @@ bool ModelReconstruct::loadGLTextures()
 	bool status = false;
 	RGBImgStructure *textureImage[1];	//create storage space for textures
 	memset(textureImage, 0, sizeof(RGBImgStructure*) * 1);	//init the pointer to NULL
-	FbxString fileName = parser->getTextureFileName();
 	
+	FbxString fileName = parser->getTextureFileName();
+	fileName = "G:\\FBX_SDK\\FbxParser\\FbxParser\\E16011.tga";
+
 	glEnable(GL_TEXTURE_2D);
 	glGenTextures(1, &textureArr[0]);
 	glBindTexture(GL_TEXTURE_2D, textureArr[0]); //bind the texture to it's array
@@ -441,13 +471,10 @@ bool ModelReconstruct::loadGLTextures()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
-
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
 	/*int width, height, nrChannels;
-	unsigned char *data = stbi_load("G:\\FBX_SDK\\FbxParser\\FbxParser\\E16011.tga", &width, &height, &nrChannels, 0);
+	unsigned char *data = stbi_load(fileName.Buffer(), &width, &height, &nrChannels, 0);
 	if (data)
 	{
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
@@ -458,15 +485,13 @@ bool ModelReconstruct::loadGLTextures()
 		FBXSDK_printf("error\n\n");
 	}
 	
-	stbi_image_free(data);
-*/
+	stbi_image_free(data);*/
+
 #define TEXTUREIMAGE
-//#undef TEXTUREIMAGE
+#undef TEXTUREIMAGE
 
 	if (isNotEmpty(fileName)) {
 #ifdef TEXTUREIMAGE
-		//textureImage[0] = loadTextureImg(fileName.Buffer(),argv);
-
 		InitializeMagick(*argv);
 		try {
 			Image image(fileName.Buffer());
@@ -474,35 +499,14 @@ bool ModelReconstruct::loadGLTextures()
 			size_t width = geo.width();
 			size_t height = geo.height();
 			
-			/*Pixels myPixels(image);
-
-			Quantum* pixels;
-			pixels = myPixels.get(0, 0, width, height);*/
-
-
 			Blob blob;
 			image.write(&blob);
 			
 			unsigned char* pixels = (unsigned char*)blob.data();	//get data from the image
 			
-
 			//glTexImage2D(GL_TEXTURE_2D, 0, 3, textureImage[0]->width, textureImage[0]->height, 0, GL_RGB, GL_UNSIGNED_BYTE, textureImage[0]->data);
-			glTexImage2D(GL_TEXTURE_2D, 0, 3, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, pixels);
+			glTexImage2D(GL_TEXTURE_2D, 0, 3, width, height, 0, GL_BGR, GL_UNSIGNED_BYTE, pixels);
 
-
-			//if (textureImage[0]->data) {
-			//	//FBXSDK_printf("ss%s\n", textureImage[0]->data);
-			//	free(textureImage[0]->data);
-			//}
-			//free(textureImage[0]);
-
-			//glEnable(GL_TEXTURE_2D);
-			glShadeModel(GL_SMOOTH);
-			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-			glClearDepth(1.0f);
-			glEnable(GL_DEPTH_TEST);
-			glDepthFunc(GL_LEQUAL);
-			glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
 		}
 		catch (Exception &error) {
 			FBXSDK_printf("error: %s", error.what());
@@ -526,32 +530,7 @@ bool ModelReconstruct::loadGLTextures()
 			break;
 		}
 	}
-	if (textureImage[0]) {	
-		size_t len = strlen((char*)textureImage[0]->data);
-		glGenTextures(1, &textureArr[0]);		//create the texture
-
-		glBindTexture(GL_TEXTURE_2D, textureArr[0]);
-		glTexImage2D(GL_TEXTURE_2D, 0, 3, textureImage[0]->width, textureImage[0]->height, 0, GL_RGB, GL_UNSIGNED_BYTE, textureImage[0]->data);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-		if (textureImage[0]->data) {
-			//FBXSDK_printf("ss%s\n", textureImage[0]->data);
-			free(textureImage[0]->data);
-		}
-		free(textureImage[0]);
-
-		glEnable(GL_TEXTURE_2D);
-		glShadeModel(GL_SMOOTH);
-		glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-		glClearDepth(1.0f);
-		glEnable(GL_DEPTH_TEST);
-		glDepthFunc(GL_LEQUAL);
-		glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
-
-		status = true;
 #endif
-	}
 	return status;
 }
 
