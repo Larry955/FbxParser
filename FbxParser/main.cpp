@@ -6,7 +6,7 @@ using namespace std;
 
 int main(int argc, char **argv)
 {
-	FbxParser *parser = new FbxParser(FbxString("run"));
+	FbxParser *parser = new FbxParser(FbxString("soldier"));
 	bool loadResult = parser->loadScene();
 	if (loadResult) {
 		parser->displayGlobalLightSettings(&parser->getFbxScene()->GetGlobalSettings());		//display global light settings

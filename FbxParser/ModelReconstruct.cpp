@@ -108,6 +108,10 @@ void ModelReconstruct::display()
 
 	glRotatef(xRot, 1.0, 0.0, 0.0);
 	glRotatef(zRot, 0.0, 0.0, 1.0);
+	
+	if (parser->getFbxFileName() == "soldier")
+		glRotatef(90, 1.0, 0.0, 0.0);		//used for soldier.fbx
+
 	glScalef(xScale, yScale, zScale);
 
 	glBindTexture(GL_TEXTURE_2D, textureArr[0]);
@@ -462,7 +466,7 @@ bool ModelReconstruct::loadGLTextures()
 	memset(textureImage, 0, sizeof(RGBImgStructure*) * 1);	//init the pointer to NULL
 	
 	FbxString fileName = parser->getTextureFileName();
-	fileName = "G:\\FBX_SDK\\FbxParser\\FbxParser\\E16011.tga";
+	//fileName = "G:\\FBX_SDK\\FbxParser\\FbxParser\\E16011.tga";
 
 	glEnable(GL_TEXTURE_2D);
 	glGenTextures(1, &textureArr[0]);
@@ -498,12 +502,12 @@ bool ModelReconstruct::loadGLTextures()
 			Geometry geo = image.size();
 			size_t width = geo.width();
 			size_t height = geo.height();
-			
+
 			Blob blob;
 			image.write(&blob);
-			
+
 			unsigned char* pixels = (unsigned char*)blob.data();	//get data from the image
-			
+
 			//glTexImage2D(GL_TEXTURE_2D, 0, 3, textureImage[0]->width, textureImage[0]->height, 0, GL_RGB, GL_UNSIGNED_BYTE, textureImage[0]->data);
 			glTexImage2D(GL_TEXTURE_2D, 0, 3, width, height, 0, GL_BGR, GL_UNSIGNED_BYTE, pixels);
 
@@ -529,8 +533,9 @@ bool ModelReconstruct::loadGLTextures()
 		default:
 			break;
 		}
-	}
 #endif
+	}
+	
 	return status;
 }
 
