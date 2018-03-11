@@ -11,7 +11,7 @@ int main(int argc, char **argv)
 	if (loadResult) {
 		parser->displayGlobalLightSettings(&parser->getFbxScene()->GetGlobalSettings());		//display global light settings
 		parser->displayHierarchy(parser->getFbxScene());		//display hierarchy of model
-		parser->displayContent(parser->getFbxScene());	//display 
+		parser->displayContent(parser->getFbxScene());	//display content
 		parser->displayPose(parser->getFbxScene());
 	}
 	else {

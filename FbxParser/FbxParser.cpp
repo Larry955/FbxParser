@@ -2,7 +2,7 @@
 #include <assert.h>
 
 FbxParser::FbxParser(FbxString fbxFile) :
-pManager(nullptr), pScene(nullptr), pMesh(nullptr), fbxFile(fbxFile), textureFile(""), controlPoints(), polygonPoints(), polygonCount()
+pManager(nullptr), pScene(nullptr), pMesh(nullptr), fbxFile(fbxFile), textureFile(""), controlPointsInfo(), polygonPoints(), polygonCount(), bones()
 {
 	initFbxObjects();
 }
@@ -173,19 +173,32 @@ void FbxParser::displayGlobalLightSettings(FbxGlobalSettings *pGlobalSettings)
 	FBXSDK_printf("ambient color: \n(red)%lf, (green)%lf, (blue)%lf\n\n", color.mRed, color.mGreen, color.mBlue);
 }
 
-void FbxParser::displayHierarchy(FbxNode *node, int depth)
-{
-	FbxString nodeName("");
+void FbxParser::displayHierarchy(FbxNode *node, int depth, int currIndex, int parentIndex)
+{		
+	FbxString boneName = node->GetName();
+	
+	//display the hierarchy
+	FbxString nodeNameBuf("");
 	for (int i = 0; i != depth; ++i) {
-		nodeName += "   ";
+		nodeNameBuf += "   ";
 	}
-	nodeName += node->GetName();
-	nodeName += "\n";
+	nodeNameBuf += boneName;
+	nodeNameBuf += "\n";
+	FBXSDK_printf(nodeNameBuf.Buffer());
+	
+	//current node is a bone if its node attribute type is skeleton
+	if (node->GetNodeAttribute() && node->GetNodeAttribute()->GetAttributeType() &&
+		node->GetNodeAttribute()->GetAttributeType() == FbxNodeAttribute::eSkeleton) {
+		Bone boneTmp;
+		boneTmp.boneName = boneName;
+		boneTmp.parentIndex = parentIndex;
+		boneTmp.currentIndex = currIndex;
+		bones.push_back(boneTmp);
+	}
 
-	FBXSDK_printf(nodeName.Buffer());
-
+	//display the hierarchy recursively
 	for (int i = 0; i != node->GetChildCount(); ++i) {
-		displayHierarchy(node->GetChild(i), depth + 1);
+		displayHierarchy(node->GetChild(i), depth + 1, bones.size(), currIndex);
 	}
 }
 
@@ -193,9 +206,9 @@ void FbxParser::displayHierarchy(FbxScene *pScene)
 {
 	FBXSDK_printf("\n\n---------------------------Hierarchy-------------------------------\n\n");
 
-	FbxNode *node = pScene->GetRootNode();
-	for (int i = 0; i != node->GetChildCount(); ++i) {
-		displayHierarchy(node->GetChild(i), 0);
+	FbxNode *rootNode = pScene->GetRootNode();
+	for (int i = 0; i != rootNode->GetChildCount(); ++i) {
+		displayHierarchy(rootNode->GetChild(i), 0, 0, -1);
 	}
 }
 
@@ -473,66 +486,14 @@ void FbxParser::displayMesh(FbxNode *node)
 
 	//Control Points
 	int controlPointsCount = pMesh->GetControlPointsCount();
-	controlPoints = pMesh->GetControlPoints();
+	//controlPointsInfo.ctrlPoints = pMesh->GetControlPoints();
 
 	FBXSDK_printf("\n\n---------------Control Points---------------------\n\n");
 	FBXSDK_printf("    Control Point Count %d\n", controlPointsCount);
-	for (int i = 0; i != controlPointsCount; ++i) {
-		//FBXSDK_printf("    Control Point %d", i + 1);
-		//display3DVector("        Coordinates: ", controlPoints[i]);
-
-		for (int j = 0; j != pMesh->GetElementNormalCount(); ++j) {
-			FbxGeometryElementNormal *geoEleNormal = pMesh->GetElementNormal(j);
-			switch (geoEleNormal->GetMappingMode())
-			{
-			case FbxGeometryElement::eByControlPoint:
-				switch (geoEleNormal->GetReferenceMode())
-				{
-				case FbxGeometryElement::eDirect:
-					FBXSDK_printf("eDirect\n\n");
-					break;
-				case FbxGeometryElement::eIndexToDirect:
-					//FBXSDK_printf("eIndexToDirect\n\n");
-					break;
-				default:
-					FBXSDK_printf("default element\n\n");
-					break;
-				}
-				break;
-			case FbxGeometryElement::eByPolygonVertex:
-				//FBXSDK_printf("eByPolygonVertex\n");
-				switch (geoEleNormal->GetReferenceMode())
-				{
-				case FbxGeometryElement::eDirect:
-					/*FBXSDK_printf("eDirect\n");
-					display3DVector("direct array:\n", geoEleNormal->GetDirectArray().GetAt(j));
-					FBXSDK_printf("\n");*/
-					//displayInfoOnce("eDirect", j);
-					break;
-				case FbxGeometryElement::eIndexToDirect:
-					//FBXSDK_printf("eIndexToDirect\n\n");
-					break;
-				default:
-					break;
-				}
-				break;
-			default:
-				break;
-			}
-			/*if (geoEleNormal->GetMappingMode() == FbxGeometryElement::eByControlPoint) {
-			FBXSDK_printf("eByControlPoint\n");
-			char header[100];
-			FBXSDK_sprintf(header, 100, "        normal vector:\n");
-			if (geoEleNormal->GetReferenceMode() == FbxGeometryElement::eDirect) {
-			display3DVector(header, geoEleNormal->GetDirectArray().GetAt(i));
-			}
-			}
-			else if (geoEleNormal->GetMappingMode() == FbxGeometryElement::eByPolygonVertex) {
-			FBXSDK_printf("eByPolygonVertex\n");
-
-
-			}*/
-		}
+	for (unsigned int i = 0; i != controlPointsCount; ++i) {
+		ControlPointInfo currPoint;
+		currPoint.ctrlPoint = pMesh->GetControlPointAt(i);
+		controlPointsInfo[i] = currPoint;
 	}
 
 
@@ -552,7 +513,7 @@ void FbxParser::displayMesh(FbxNode *node)
 
 		for (int j = 0; j != polygonSize; ++j) {
 			int vertexIndex = pMesh->GetPolygonVertex(i, j);
-			FbxVector4 vec = controlPoints[vertexIndex];
+			FbxVector4 vec = controlPointsInfo[vertexIndex].ctrlPoint;
 			getNormal(pMesh, vertexIndex, vertexCounter, normals);	
 			
 			polygonPoints.push_back(vec);
@@ -565,8 +526,10 @@ void FbxParser::displayMesh(FbxNode *node)
 	FbxGeometryElementUV *uv = pMesh->GetElementUV(0);
 	FBXSDK_printf("name: %s\n", uv->GetName());	//return UV_channel_1
 
-	//glutDisplayFunc(displayModel);
 	FBXSDK_printf("\n\n");
+
+	processBonesAndAnimations(node);
+
 }
 
 
@@ -698,6 +661,109 @@ void FbxParser::getTextureUV(FbxMesh *mesh, vector<FbxVector2> &uvs)
 	}
 }
 
+void FbxParser::processBonesAndAnimations(FbxNode *node)
+{
+	FbxMesh *currMesh = node->GetMesh();
+	unsigned int numOfDeformers = currMesh->GetDeformerCount();
+
+	//Get transform matrix
+	FbxAMatrix geometryTransform = getGeometryTransformation(node);
+
+	//A deformer is a FBX thing, which contains some clusters
+	//A cluster contains a link, which is basically a joint
+	//Normally, there is only one deformer in a mesh
+	for (unsigned int deformerIndex = 0; deformerIndex != numOfDeformers; ++deformerIndex) {
+		//There are many types of deformers in FBX
+		//We are using only skins, so we see if there is a skin
+		FbxSkin *currSkin = reinterpret_cast<FbxSkin*>(currMesh->GetDeformer(deformerIndex, FbxDeformer::eSkin));
+		if (!currSkin) {
+			continue;
+		}
+
+		unsigned int numOfClusters = currSkin->GetClusterCount();
+		for (unsigned int clusterIndex = 0; clusterIndex != numOfClusters; ++clusterIndex) {
+			FbxCluster *currCluster = currSkin->GetCluster(clusterIndex);
+			FbxString currBoneName = currCluster->GetLink()->GetName();
+			int currBoneIndex = findBoneIndexByName(currBoneName);
+			if (currBoneIndex == -1) {
+				FBXSDK_printf("error: can't find the bone: %s\n\n", currBoneName);
+				continue;
+			}
+
+			FbxAMatrix transformMatrix;
+			FbxAMatrix transformLinkMatrix;
+			FbxAMatrix globalBindPoseInverseMatrix;
+
+			currCluster->GetTransformMatrix(transformMatrix);
+			currCluster->GetTransformLinkMatrix(transformLinkMatrix);
+			globalBindPoseInverseMatrix = transformLinkMatrix.Inverse() * transformMatrix * geometryTransform;
+
+			//Update the information of the bones
+			bones[currBoneIndex].node = currCluster->GetLink();
+			bones[currBoneIndex].globalBindPoseInverse = globalBindPoseInverseMatrix;
+
+			//Associate each bone with the Control Points it affects
+			unsigned int numOfIndices = currCluster->GetControlPointIndicesCount();
+			for (unsigned int i = 0; i != numOfIndices; ++i) {
+				IndexWeightPair weightPair;
+				weightPair.index = currBoneIndex;
+				weightPair.weight = currCluster->GetControlPointWeights()[i];
+				controlPointsInfo[currCluster->GetControlPointIndices()[i]].weightPairs.push_back(weightPair);
+				//controlPointsInfo.weightPairs.push_back(weightPair);
+			}
+
+			//Get Animation information
+			//Now only support one take
+			FbxAnimStack *currAnimStack = pScene->GetSrcObject<FbxAnimStack>(0);
+			FbxString animStackName = currAnimStack->GetName();
+			animationName = animStackName;
+			FbxTakeInfo *takeInfo = pScene->GetTakeInfo(animStackName);
+			FbxTime start = currAnimStack->GetLocalTimeSpan().GetStart();
+			FbxTime end = currAnimStack->GetLocalTimeSpan().GetStop();
+
+			animationLength = end.GetFrameCount(FbxTime::eFrames24) - start.GetFrameCount(FbxTime::eFrames24) + 1;
+			KeyFrame **currAnim = &bones[currBoneIndex].animation;
+
+			for (FbxLongLong i = start.GetFrameCount(FbxTime::eFrames24); i != end.GetFrameCount(FbxTime::eFrames24); ++i) {
+				FbxTime currTime;
+				currTime.SetFrame(i, FbxTime::eFrames24);
+				*currAnim = new KeyFrame();	
+				(*currAnim)->frameNum = i;
+				FbxAMatrix currTransformOffset = node->EvaluateGlobalTransform(currTime) * geometryTransform;
+				(*currAnim)->globalTransform = currTransformOffset.Inverse() * currCluster->GetLink()->EvaluateGlobalTransform(currTime);
+				currAnim = &((*currAnim)->next);
+				
+			}
+			
+		}
+	}
+
+	//debugSumOfWeights();
+}
+
+FbxAMatrix FbxParser::getGeometryTransformation(FbxNode *node) 
+{
+	if (!node) {
+		throw std::exception("Null for mesh geometry\n\n");
+	}
+
+	const FbxVector4 IT = node->GetGeometricTranslation(FbxNode::eSourcePivot);
+	const FbxVector4 IR = node->GetGeometricRotation(FbxNode::eSourcePivot);
+	const FbxVector4 IS = node->GetGeometricScaling(FbxNode::eSourcePivot);
+
+	return FbxAMatrix(IT, IR, IS);
+
+}
+
+
+int FbxParser::findBoneIndexByName(const FbxString& boneName)
+{
+	for (int index = 0; index != bones.size(); ++index) {
+		if (bones[index].boneName == boneName)
+			return index;
+	}
+	return -1;
+}
 
 void FbxParser::displaySkeleton(FbxNode *node)
 {
@@ -709,11 +775,7 @@ void FbxParser::displaySkeleton(FbxNode *node)
 	FBXSDK_printf(skeletonInfo.Buffer());
 
 	int srcObjCount = ((FbxObject*)skeleton)->GetSrcObjectCount<FbxObjectMetaData>();
-	/*if (srcObjCount > 0)
-		FBXSDK_printf("meta data connections\n");
-	else
-		FBXSDK_printf("meta data connections failed\n");*/
-
+	
 	for (int i = 0; i != srcObjCount; ++i) {
 		FbxObjectMetaData *metaData = ((FbxObject*)skeleton)->GetSrcObject<FbxObjectMetaData>(i);
 		FBXSDK_printf("name: %s\n", metaData->GetName());
@@ -785,4 +847,22 @@ void FbxParser::covertFormat()
 		lExporter->Destroy();
 	}
 	delete[] lNewFileName;
+}
+
+void FbxParser::debugSumOfWeights()
+{
+	for (auto it = controlPointsInfo.begin(); it != controlPointsInfo.end(); ++it) {
+		vector<IndexWeightPair> weightPairs = it->second.weightPairs;
+		double sumOfWeights = 0.0;
+		FBXSDK_printf("\nbone id		weight\n");
+		for (auto weightPair : weightPairs) {
+			FBXSDK_printf("%d		%lf\n", weightPair.index, weightPair.weight);
+			sumOfWeights += weightPair.weight;
+		}
+		FBXSDK_printf("the sum of weights is: %lf\n", sumOfWeights);
+		double target = 1.0;
+		if (sumOfWeights != target) {
+			FBXSDK_printf("error! the sum of weights is: %lf\n", sumOfWeights);
+		}
+	}
 }
