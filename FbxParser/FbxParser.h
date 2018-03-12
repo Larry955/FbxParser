@@ -61,7 +61,7 @@ private:
 	vector<FbxVector4> normals;
 	vector<FbxVector2> uvs;
 
-	vector<Bone> bones;
+	Skeleton skeleton;
 	
 
 	void getNormal(FbxMesh *mesh, int vertexIndex, int vertexCounter, vector<FbxVector4> &normals);
@@ -80,10 +80,10 @@ private:
 
 	void displayTexture(FbxScene *pScene);
 
-	void processBonesAndAnimations(FbxNode *node); 
+	void processJointsAndAnimations(FbxNode *node);
 	FbxAMatrix getGeometryTransformation(FbxNode *node);
-	int findBoneIndexByName(const FbxString& boneName);
-
+	int findJointIndexByName(const FbxString& jointName);
+	FbxMatrix calcGlobalMatrix(int i);
 	void debugSumOfWeights();
 };
  

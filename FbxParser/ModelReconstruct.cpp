@@ -121,19 +121,6 @@ void ModelReconstruct::display()
 	vector<FbxVector4> normals = parser->getNormals();
 	vector<FbxVector2> uvs = parser->getTextureUVs();
 
-	//for (int i = 0; i != 24; ++i) {
-	//	if (i % 3 == 0)
-	//		FBXSDK_printf("\nuv: ");
-	//	FBXSDK_printf("%.10lf, %.10lf\n", uvs[i].mData[0], uvs[i].mData[1]);
-	//}
-
-	//for (int i = 0; i != 24; ++i) {
-	//	if (i % 3 == 0)
-	//		FBXSDK_printf("\nnormal: ");
-	//	FBXSDK_printf("%.10lf, %.10lf\n", normals[i].mData[0], normals[i].mData[1], normals[i].mData[2]);
-	//}
-
-
 	int polygonPointsIndex = 0;
 	int polygonIndex = 0;
 	while (polygonPointsIndex < polygonPoints.size()) {

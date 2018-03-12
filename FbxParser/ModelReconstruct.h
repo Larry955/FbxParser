@@ -39,7 +39,7 @@ static GLfloat cameraPosY = -60.0f;
 static GLfloat cameraPosZ = 100.0f;
 
 // the key states. These variables will be zero
-//when no key is being presses
+//when no key is being pressed
 static float deltaAngle = 0.0f;
 static float deltaMove = 0.0f;
 static int xOrigin = -1;

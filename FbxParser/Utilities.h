@@ -5,12 +5,11 @@
 #include <vector>
 using std::vector;
 
-
 //This stores the weight of each Control Point
 struct IndexWeightPair
 {
-	unsigned int index;	//index of Bone 
-	double weight;		//weight of inifluence by the bone
+	unsigned int index;	//index of joint 
+	double weight;		//weight of influence by the joint
 	IndexWeightPair() :
 		index(0), weight(0.0)
 	{}
@@ -22,7 +21,7 @@ struct ControlPointInfo
 	vector<IndexWeightPair> weightPairs;
 };
 
-//This stores the information of each key frame of each Bone
+//This stores the information of each key frame of each Joint
 struct KeyFrame{
 	FbxLongLong frameNum;
 	FbxAMatrix globalTransform;	//transform matrix
@@ -33,23 +32,23 @@ struct KeyFrame{
 };
 
 
-//This represents the bone of FBX model 
-struct Bone{
-	FbxString boneName;
-	int currentIndex;	//index of current bone	
-	int parentIndex;	//index to its parent bone
+//This represents the joint of FBX model 
+struct Joint{
+	FbxString jointName;
+	int currentIndex;	//index of current joint	
+	int parentIndex;	//index to its parent joint
 	FbxAMatrix globalBindPoseInverse;
 	KeyFrame *animation;
 	FbxNode *node;
 
-	Bone() :
+	Joint() :
 		animation(nullptr),
 		node(nullptr)
 	{
 		globalBindPoseInverse.SetIdentity();
 		parentIndex = -1;
 	}
-	~Bone()
+	/*~Joint()
 	{
 		while (animation)
 		{
@@ -57,8 +56,11 @@ struct Bone{
 			delete animation;
 			animation = temp;
 		}
-	}
+	}*/
 };
 
+struct Skeleton{
+	vector<Joint> joints;
+};
 
 #endif
