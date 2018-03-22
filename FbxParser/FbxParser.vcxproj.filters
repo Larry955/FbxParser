@@ -33,6 +33,9 @@
     <ClCompile Include="tgaParser.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="SceneCache.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="FbxParser.h">
@@ -54,6 +57,9 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="Utilities.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="SceneCache.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

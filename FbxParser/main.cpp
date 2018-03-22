@@ -1,7 +1,7 @@
 #include "ModelReconstruct.h"
 
 
-#include <iostream>
+#include <iostream> 
 using namespace std;
 
 int main(int argc, char **argv)
@@ -28,6 +28,7 @@ int main(int argc, char **argv)
 		model->activeKeyUpFunc();	//stop moving the camera
 		model->activateMouseFunc();	//active the mouse function to get the cooridinate of mouse in the window
 		model->activateMotionFunc();	//change the direction of camera	
+		//model->timerFunc();
 		model->loop();		//glutMainLoop
 	}
 	if (loadResult) {

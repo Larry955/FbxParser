@@ -37,7 +37,8 @@ struct Joint{
 	FbxString jointName;
 	int currentIndex;	//index of current joint	
 	int parentIndex;	//index to its parent joint
-	FbxAMatrix globalBindPoseInverse;
+	FbxAMatrix globalMatrix;
+	FbxAMatrix localMatrix;
 	KeyFrame *animation;
 	FbxNode *node;
 
@@ -45,7 +46,8 @@ struct Joint{
 		animation(nullptr),
 		node(nullptr)
 	{
-		globalBindPoseInverse.SetIdentity();
+		localMatrix.SetIdentity();
+		globalMatrix.SetIdentity();
 		parentIndex = -1;
 	}
 	/*~Joint()

@@ -13,6 +13,13 @@ using std::unordered_map;
 #define IOS_REF (*(pManager->GetIOSettings()))
 #endif
 
+enum Status {
+	UNLOADED,			//unload file or load file failed
+	MUST_BE_LOADED,		//ready for loading file
+	MUST_BE_REFRESHED,	//something changed and redraw needed
+	REFRESHED			//no redraw needed
+};
+
 class FbxParser
 {
 public:
@@ -21,6 +28,8 @@ public:
 
 	FbxParser(const FbxParser&) = delete;	//copy constructor/operator= is forbidden
 	FbxParser& operator=(const FbxParser&) = delete;
+
+	
 
 	bool loadScene();		//load scene,return false if failed
 	void displayMetaData(FbxScene *pScene);		//display meta data
@@ -45,7 +54,26 @@ public:
 
 	void setTextureFileName(FbxString texFile){ textureFile = texFile; }
 	FbxString getTextureFileName() { return textureFile; }
+	
+	
+	FbxTime getFrameTime() { return frameTime; }
+	FbxTime getStartTime() { return startTime; }
+	FbxTime getStopTime() { return stopTime; }
+	FbxTime getCurrentTime() { return currentTime; }
+	FbxAnimLayer* getAnimLayer() { return currAnimLayer; }
+	
 
+	void setFrameTime(FbxTime frameTime) { this->frameTime = frameTime; }
+	void setCurrentTime(FbxTime currentTime) { this->currentTime = currentTime; }
+	void setStartTime(FbxTime startTime) { this->startTime = startTime; }
+	void setStopTime(FbxTime stopTime) { this->stopTime = stopTime; }
+	void setAnimStatus(Status animStatus) { this->animStatus = animStatus; }
+	void setCurrAnimStack(int animIndex);
+	void onTimerClick();
+
+	FbxAMatrix getGlobalPosition(FbxNode *node, FbxTime currTime, FbxAMatrix *parentGlobalMatrix);
+	FbxAMatrix getGeometry(FbxNode *node);
+	Status getStatus() const { return animStatus; }
 private:
 	FbxManager *pManager;
 	FbxScene *pScene;
@@ -57,6 +85,15 @@ private:
 	unordered_map<int, ControlPointInfo> controlPointsInfo;
 	vector<FbxVector4> polygonPoints;
 	int polygonCount;
+
+	FbxArray<FbxString*> animStackNameArray;
+	FbxAnimLayer *currAnimLayer;
+	FbxTime startTime;
+	FbxTime stopTime;
+	FbxTime frameTime;
+	FbxTime currentTime;
+	Status animStatus;
+
 	
 	vector<FbxVector4> normals;
 	vector<FbxVector2> uvs;

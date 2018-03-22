@@ -1,14 +1,15 @@
 #ifndef MODELRECONSTRUCT_H
 #define MODELRECONSTRUCT_H
 
-#include <gl\glew.h>
-#include <gl\GLAux.h>
-#include <gl\glut.h>
+//#include <gl\glew.h>
+
 
 #include "FbxParser.h"
+#include "SceneCache.h"
 #include "RGBImgStructure.h"
 
-
+//#include <gl\GLAux.h>
+//#include <gl\glut.h>
 class ModelReconstruct;
 static ModelReconstruct *currModelRec;
 
@@ -75,7 +76,13 @@ public:
 	void activeReshapFunc();
 	void reshapeFunc(int w, int h);
 
+	void activeTimerFunc();
+	void timerFunc();
+
 	void drawGrid(const FbxAMatrix & pTransform);
+	void drawModel();
+	void drawSkeleton(FbxNode *node, FbxTime currTime, FbxAnimLayer *currAnimLayer, FbxAMatrix &parentGlobalPosition);
+	void drawMesh(FbxNode *node, FbxTime currTime, FbxAnimLayer *currAnimLayer, FbxAMatrix &globalPosition);
 	void loop();			//used for glutMainLoop()
 
 private:
@@ -89,6 +96,15 @@ private:
 	//void textureMapping();
 	void initModelSpace();
 	void resetTransformFactor();
+	void computeShapeDeformation(FbxMesh *mesh, FbxTime &currTime, FbxAnimLayer *animLayer, FbxVector4 *vertexArray);
+	void computeSkinDeformation(FbxMesh *mesh, FbxAMatrix &globalPosition, FbxTime &currTime, FbxVector4 *vertexArray, FbxPose *pose);
+	void computeLinearDeformation(FbxMesh *mesh, FbxAMatrix &globalPosition, FbxTime &currTime, FbxVector4 *vertexArray, FbxPose *pose);
+	void computeDualQuaternionDeformation(FbxMesh *mesh, FbxAMatrix &globalPosition, FbxTime &currTime, FbxVector4 *vertexArray, FbxPose *pose);
+	void computeClusterDeformation(FbxMesh *mesh, FbxAMatrix &globalPosition, FbxCluster *cluster, FbxAMatrix &vertexTransformMatrix, FbxTime &currTime, FbxPose *pose);
+	void matrixScale(FbxAMatrix &influence, double weight);
+	void matrixAddToDiagonal(FbxAMatrix &influence, double value);
+	void matrixAdd(FbxAMatrix &mat1, const FbxAMatrix &mat2);
+
 };
 
 

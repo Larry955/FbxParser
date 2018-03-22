@@ -54,7 +54,7 @@
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>G:\FBX_SDK\2018.1.1\lib\vs2013\x86\debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>libfbxsdk-md.lib;glut32.lib;CORE_DB_Magick++_.lib;CORE_DB_MagickCore_.lib;CORE_DB_MagickWand_.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libfbxsdk-md.lib;glut32.lib;glew32.lib;CORE_DB_Magick++_.lib;CORE_DB_MagickCore_.lib;CORE_DB_MagickWand_.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -77,9 +77,11 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="ModelReconstruct.cpp" />
     <ClCompile Include="RGBImgStructure.cpp" />
+    <ClCompile Include="SceneCache.cpp" />
     <ClCompile Include="tgaParser.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="SceneCache.h" />
     <ClInclude Include="Utilities.h" />
     <ClInclude Include="common.h" />
     <ClInclude Include="FbxParser.h" />
