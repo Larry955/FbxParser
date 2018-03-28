@@ -1,15 +1,10 @@
 #ifndef MODELRECONSTRUCT_H
 #define MODELRECONSTRUCT_H
 
-//#include <gl\glew.h>
-
-
 #include "FbxParser.h"
 #include "SceneCache.h"
 #include "RGBImgStructure.h"
 
-//#include <gl\GLAux.h>
-//#include <gl\glut.h>
 class ModelReconstruct;
 static ModelReconstruct *currModelRec;
 

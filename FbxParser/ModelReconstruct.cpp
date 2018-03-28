@@ -4,12 +4,8 @@
 #include <cstdio>
 using std::vector;
 
-#include <Magick++.h>
-using namespace Magick;	//a third party library, used for resolving the images 
-
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"	//a third part header,used for resolving the image
-
 
 GLuint  textureArr[1];         // Storage For One Texture ( NEW )  
 
@@ -139,7 +135,7 @@ void ModelReconstruct::display()
 	glRotatef(zRot, 0.0, 0.0, 1.0);
 	
 
-	//drawModel();
+	drawModel();
 	//glDisable(GL_TEXTURE_2D);
 
 	glPopMatrix();
@@ -1096,7 +1092,6 @@ void ModelReconstruct::resetTransformFactor()
 	 
 }
 
-
 //since we failed to get the data from texture image, this function is not be called
 bool ModelReconstruct::loadGLTextures()
 {
@@ -1105,7 +1100,6 @@ bool ModelReconstruct::loadGLTextures()
 	memset(textureImage, 0, sizeof(RGBImgStructure*) * 1);	//init the pointer to NULL
 	
 	FbxString fileName = parser->getTextureFileName();
-	//fileName = "G:\\FBX_SDK\\FbxParser\\FbxParser\\E16011.tga";
 
 	glEnable(GL_TEXTURE_2D);
 	glGenTextures(1, &textureArr[0]);
@@ -1116,46 +1110,7 @@ bool ModelReconstruct::loadGLTextures()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
-	/*int width, height, nrChannels;
-	unsigned char *data = stbi_load(fileName.Buffer(), &width, &height, &nrChannels, 0);
-	if (data)
-	{
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-		status = true;
-	}
-	else
-	{
-		FBXSDK_printf("error\n\n");
-	}
-	
-	stbi_image_free(data);*/
-
-#define TEXTUREIMAGE
-#undef TEXTUREIMAGE
-
 	if (isNotEmpty(fileName)) {
-#ifdef TEXTUREIMAGE
-		InitializeMagick(*argv);
-		try {
-			Image image(fileName.Buffer());
-			Geometry geo = image.size();
-			size_t width = geo.width();
-			size_t height = geo.height();
-
-			Blob blob;
-			image.write(&blob);
-
-			unsigned char* pixels = (unsigned char*)blob.data();	//get data from the image
-
-			//glTexImage2D(GL_TEXTURE_2D, 0, 3, textureImage[0]->width, textureImage[0]->height, 0, GL_RGB, GL_UNSIGNED_BYTE, textureImage[0]->data);
-			glTexImage2D(GL_TEXTURE_2D, 0, 3, width, height, 0, GL_BGR, GL_UNSIGNED_BYTE, pixels);
-
-		}
-		catch (Exception &error) {
-			FBXSDK_printf("error: %s", error.what());
-			return false;
-		}
-#else
 		switch (getFileSuffix(fileName.Buffer()))
 		{
 		case eTextureType::TGA:
@@ -1172,9 +1127,7 @@ bool ModelReconstruct::loadGLTextures()
 		default:
 			break;
 		}
-#endif
 	}
-	
 	return status;
 }
 
