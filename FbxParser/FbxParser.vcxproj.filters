@@ -24,16 +24,16 @@
     <ClCompile Include="ModelReconstruct.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="common.cpp">
+    <ClCompile Include="AddMenuHelper.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="RGBImgStructure.cpp">
+    <ClCompile Include="CameraManager.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="tgaParser.cpp">
+    <ClCompile Include="VBOMesh.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="SceneCache.cpp">
+    <ClCompile Include="Utilities.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
@@ -44,22 +44,16 @@
     <ClInclude Include="ModelReconstruct.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="common.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="RGBImgStructure.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="tgaParser.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="stb_image.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
     <ClInclude Include="Utilities.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="SceneCache.h">
+    <ClInclude Include="AddMenuHelper.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="CameraManager.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="VBOMesh.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
@@ -72,5 +66,6 @@
     <None Include="bunny.fbx">
       <Filter>资源文件</Filter>
     </None>
+    <None Include="ClassDiagram.cd" />
   </ItemGroup>
 </Project>

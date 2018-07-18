@@ -1,11 +1,14 @@
 #include "FbxParser.h"
 #include <assert.h>
 #include <math.h>
+#include "VBOMesh.h"
+#include "FreeImage.h"
 
 FbxParser::FbxParser(FbxString fbxFile) :
-pManager(nullptr), pScene(nullptr), pMesh(nullptr), fbxFile(fbxFile), textureFile(""), controlPointsInfo(), polygonPoints(), polygonCount(), skeleton()
+pManager(nullptr), pScene(nullptr), pMesh(nullptr), fbxFile(fbxFile), 
+textureFile(""), controlPointsInfo(), polygonPoints(), polygonCount(), skeleton(), animStatus(UNLOADED), shadingMode(SHADING_MODE_SHADED)
 {
-	initFbxObjects();
+	InitFbxObjects();
 }
 
 FbxParser::~FbxParser()
@@ -13,8 +16,7 @@ FbxParser::~FbxParser()
 	pManager->Destroy();
 }
 
-
-void FbxParser::initFbxObjects()
+void FbxParser::InitFbxObjects()
 {
 	//create the FBX manager which is the object allocator for almost all the classes in the SDK
 	pManager = FbxManager::Create();
@@ -42,8 +44,13 @@ void FbxParser::initFbxObjects()
 	}
 }
 
-bool FbxParser::loadScene()
+bool FbxParser::LoadScene()
 {
+	FbxString fullFbxFile = fbxFile + ".fbx";
+	if (!FbxFileUtils::Exist(fullFbxFile))
+	{
+		return false;
+	}
 	assert(pManager != nullptr && pScene != nullptr);
 
 	int animStackCount = 0;
@@ -53,19 +60,22 @@ bool FbxParser::loadScene()
 
 	//initialize the importer by providing a file name
 	const bool imorterStatus = importer->Initialize(fbxFile + ".fbx", -1, pManager->GetIOSettings());
-	if (!imorterStatus) {
+	if (!imorterStatus) 
+	{
 		FBXSDK_printf("error: initialize importer failed\n");
 		return status;
 	}
 
-	if (importer->IsFBX()) {
+	if (importer->IsFBX()) 
+	{
 		FBXSDK_printf("\n\n-------Animation Stack Information-------\n\n");
 
 		animStackCount = importer->GetAnimStackCount();
 		FBXSDK_printf("number of animation stacks: %d\n", animStackCount);
 		FBXSDK_printf("current animation stack: %s\n", importer->GetActiveAnimStackName().Buffer());
 
-		for (int i = 0; i != animStackCount; ++i) {
+		for (int i = 0; i != animStackCount; ++i) 
+		{
 			FbxTakeInfo *takeInfo = importer->GetTakeInfo(i);
 
 			FBXSDK_printf("animation stack %d\n", i);
@@ -109,64 +119,233 @@ bool FbxParser::loadScene()
 			}
 			
 		}
-		if (status) {
+		if (status) 
+		{
 			animStatus = MUST_BE_LOADED;
 			
 			//convert axis system to what is used in this example, if needed
 			FbxAxisSystem sceneAxisSystem = pScene->GetGlobalSettings().GetAxisSystem();
 			FbxAxisSystem localAxisSystem(FbxAxisSystem::eYAxis, FbxAxisSystem::eParityOdd, FbxAxisSystem::eRightHanded);
-			if (sceneAxisSystem != localAxisSystem) {
+			if (sceneAxisSystem != localAxisSystem) 
+			{
 				localAxisSystem.ConvertScene(pScene);
 			}
 
 			//convert axis system to what is used in this example, if needed
 			FbxSystemUnit sceneSystemUnit = pScene->GetGlobalSettings().GetSystemUnit();
-			if (sceneSystemUnit.GetScaleFactor() != 1.0) {
+			if (sceneSystemUnit.GetScaleFactor() != 1.0) 
+			{
 				//this unit in this example is centimeter
 				FbxSystemUnit::cm.ConvertScene(pScene);
 			}
 
 			//get the list of all the animation stack
 			pScene->FillAnimStackNameArray(animStackNameArray);
-
+			
+			cameraArray.Clear();
+			FillCameraArray(pScene->GetRootNode(), cameraArray);
 			//convert mesh, NURBS and patch into triangle mesh
-			/*FbxGeometryConverter geomConverter(pManager);	//this is not necessary since I have considered the situation of quad mesh
-			geomConverter.Triangulate(pScene, true);*/
+			FbxGeometryConverter geomConverter(pManager);	//this is not necessary since I have considered the situation of quad mesh
+			geomConverter.Triangulate(pScene, true);
 
 			//bake the scene for one frame
-			//loadCacheRecursive(pScene, currAnimLayer, fbxFileName, true);
+			//LoadCacheRecursive(pScene->GetRootNode(), currAnimLayer, true);
 
 			//initialize the frame period
-			setCurrAnimStack(0);
+			//SetCurrAnimStack(0);
 			frameTime.SetTime(0, 0, 0, 1, 0, pScene->GetGlobalSettings().GetTimeMode());
+		} 
+		else
+		{
+			animStatus = UNLOADED;
 		}
 	}
 	
-
 	//destroy the importer
 	importer->Destroy();
 
 	return status;
 }
 
-void FbxParser::onTimerClick()
+void FbxParser::FillCameraArray(FbxNode *pNode, FbxArray<FbxNode*> &pCameraArray)
 {
-	if (stopTime > startTime) {
+	//if current node is Camera
+	if (pNode && pNode->GetNodeAttribute() &&
+		pNode->GetNodeAttribute()->GetAttributeType() == FbxNodeAttribute::eCamera)
+				pCameraArray.Add(pNode);		//add current camera into pCameraArray
+
+	const int childCount = pNode->GetChildCount();
+	for (int i = 0; i != childCount; ++i)
+		FillCameraArray(pNode->GetChild(i), pCameraArray);
+}
+
+void FbxParser::OnTimerClick()
+{
+	if (stopTime > startTime) 
+	{
+		//set the scene status flag to refresh 
+		//the scene in the next timer call back
 		animStatus = MUST_BE_REFRESHED;
-		FBXSDK_printf("before currentTime: %d	frameTime: %d	stopTime: %d\n", currentTime.GetMilliSeconds(), frameTime.GetMilliSeconds(), stopTime.GetMilliSeconds());
+		//FBXSDK_printf("before currentTime: %d	frameTime: %d	stopTime: %d\n", currentTime.GetMilliSeconds(), frameTime.GetMilliSeconds(), stopTime.GetMilliSeconds());
 		currentTime += frameTime;
-		FBXSDK_printf("after currentTime: %d	frameTime: %d	stopTime: %d\n", currentTime.GetMilliSeconds(), frameTime.GetMilliSeconds(), stopTime.GetMilliSeconds());
+		//FBXSDK_printf("after currentTime: %d	frameTime: %d	stopTime: %d\n", currentTime.GetMilliSeconds(), frameTime.GetMilliSeconds(), stopTime.GetMilliSeconds());
 		
-		if (currentTime > stopTime) {
+		if (currentTime > stopTime) 
+		{
 			currentTime = startTime;
 		}
 	}
-	else {
+	// Avoid displaying the same frame on 
+	// and on if the animation stack has no length.
+	else
+	{
+		// Set the scene status flag to avoid refreshing 
+		// the scene in the next timer callback.
 		animStatus = REFRESHED;
 	}
 }
 
-void FbxParser::setCurrAnimStack(int animIndex)
+void FbxParser::LoadCacheRecursive(FbxScene * pScene, FbxAnimLayer * pAnimLayer, const char * pFbxFileName, bool pSupportVBO)
+{
+	//获取贴图个数
+	const int lTextureCount = pScene->GetTextureCount();
+	for (int lTextureIndex = 0; lTextureIndex < lTextureCount; ++lTextureIndex)
+	{
+		FbxTexture * lTexture = pScene->GetTexture(lTextureIndex);	//获取贴图对象
+		FbxFileTexture * lFileTexture = FbxCast<FbxFileTexture>(lTexture);
+		if (lFileTexture && !lFileTexture->GetUserDataPtr())
+		{
+			// Try to load the texture from absolute path
+			const FbxString lFileName = lFileTexture->GetFileName();	//获取贴图文件名
+
+			GLuint lTextureObject = 0;
+			bool lStatus = LoadTextureFromFile(lFileName, lTextureObject);
+
+			const FbxString lAbsFbxFileName = FbxPathUtils::Resolve(pFbxFileName);
+			const FbxString lAbsFolderName = FbxPathUtils::GetFolderName(lAbsFbxFileName);	//获取绝对路径
+			if (!lStatus)
+			{
+				// Load texture from relative file name (relative to FBX file)
+				const FbxString lResolvedFileName = FbxPathUtils::Bind(lAbsFolderName, lFileTexture->GetRelativeFileName());
+				lStatus = LoadTextureFromFile(lResolvedFileName, lTextureObject);
+			}
+
+			if (!lStatus)
+			{
+				// Load texture from file name only (relative to FBX file)
+				const FbxString lTextureFileName = FbxPathUtils::GetFileName(lFileName);
+				const FbxString lResolvedFileName = FbxPathUtils::Bind(lAbsFolderName, lTextureFileName);
+				lStatus = LoadTextureFromFile(lResolvedFileName, lTextureObject);
+			}
+
+			if (!lStatus)
+			{
+				FBXSDK_printf("Failed to load texture file: %s\n", lFileName.Buffer());
+				continue;
+			}
+
+			if (lStatus)
+			{
+				GLuint * lTextureName = new GLuint(lTextureObject);
+				lFileTexture->SetUserDataPtr(lTextureName);
+			}
+		}
+	}
+
+	LoadCacheRecursive(pScene->GetRootNode(), pAnimLayer, pSupportVBO);
+}
+
+void FbxParser::LoadCacheRecursive(FbxNode * pNode, FbxAnimLayer * pAnimLayer, bool pSupportVBO)
+{
+
+	// Bake material and hook as user data.
+	const int lMaterialCount = pNode->GetMaterialCount();
+	for (int lMaterialIndex = 0; lMaterialIndex < lMaterialCount; ++lMaterialIndex)
+	{
+		FbxSurfaceMaterial * lMaterial = pNode->GetMaterial(lMaterialIndex);
+		if (lMaterial && !lMaterial->GetUserDataPtr())
+		{
+			FbxAutoPtr<MaterialCache> lMaterialCache(new MaterialCache);
+			if (lMaterialCache->Initialize(lMaterial))
+			{
+				lMaterial->SetUserDataPtr(lMaterialCache.Release());
+			}
+		}
+	}
+
+	FbxNodeAttribute* lNodeAttribute = pNode->GetNodeAttribute();
+	if (lNodeAttribute)
+	{
+		// Bake mesh as VBO(vertex buffer object) into GPU.
+		if (lNodeAttribute->GetAttributeType() == FbxNodeAttribute::eMesh)
+		{
+			FbxMesh * lMesh = pNode->GetMesh();
+			if (pSupportVBO && lMesh && !lMesh->GetUserDataPtr())
+			{
+				FbxAutoPtr<VBOMesh> lMeshCache(new VBOMesh);
+				if (lMeshCache->Initialize(lMesh))
+				{
+					lMesh->SetUserDataPtr(lMeshCache.Release());
+				}
+			}
+		}
+		// Bake light properties.
+		else if (lNodeAttribute->GetAttributeType() == FbxNodeAttribute::eLight)
+		{
+			FbxLight * lLight = pNode->GetLight();
+			if (lLight && !lLight->GetUserDataPtr())
+			{
+				FbxAutoPtr<LightCache> lLightCache(new LightCache);
+				if (lLightCache->Initialize(lLight, pAnimLayer))
+				{
+					lLight->SetUserDataPtr(lLightCache.Release());
+				}
+			}
+		}
+	}
+
+	const int lChildCount = pNode->GetChildCount();
+	for (int lChildIndex = 0; lChildIndex < lChildCount; ++lChildIndex)
+	{
+		LoadCacheRecursive(pNode->GetChild(lChildIndex), pAnimLayer, pSupportVBO);
+	}
+}
+
+bool FbxParser::LoadTextureFromFile(const FbxString & pFilePath, unsigned int & pTextureObject)
+{
+	// Transfer the texture data into GPU
+	glGenTextures(1, &pTextureObject);
+	glBindTexture(GL_TEXTURE_2D, pTextureObject);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+	glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+
+	FREE_IMAGE_FORMAT fifmt = FreeImage_GetFileType(pFilePath.Buffer(), 0);
+	if (fifmt == FIF_UNKNOWN)
+	{
+		fifmt = FreeImage_GetFIFFromFilename(pFilePath.Buffer());
+		if (fifmt == FIF_UNKNOWN)
+			return false;
+	}
+	
+	FIBITMAP *dib = FreeImage_Load(fifmt, pFilePath.Buffer(), 0);
+	dib = FreeImage_ConvertTo24Bits(dib);
+
+	int width = FreeImage_GetWidth(dib);
+	int height = FreeImage_GetHeight(dib);
+	BYTE *pixels = (BYTE*)FreeImage_GetBits(dib);
+	if (!pixels)
+		return false;
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0
+								, GL_BGR_EXT, GL_UNSIGNED_BYTE, pixels);
+	FreeImage_Unload(dib);
+
+	return true;
+}
+
+void FbxParser::SetCurrAnimStack(int animIndex)
 {
 	const int animStackCount = animStackNameArray.GetCount();
 	if (!animStackCount || animIndex >= animStackCount) {
@@ -185,29 +364,25 @@ void FbxParser::setCurrAnimStack(int animIndex)
 	currAnimLayer = currAnimStack->GetMember<FbxAnimLayer>();
 	pScene->SetCurrentAnimationStack(currAnimStack);
 
+	//get current animation infos
 	FbxTakeInfo *currTakeInfo = pScene->GetTakeInfo((*animStackNameArray[animIndex]));
 	if (currTakeInfo) {
-		startTime = currTakeInfo->mLocalTimeSpan.GetStart();
-		stopTime = currTakeInfo->mLocalTimeSpan.GetStop();
-
+		startTime = currTakeInfo->mLocalTimeSpan.GetStart();		//start time
+		stopTime = currTakeInfo->mLocalTimeSpan.GetStop();		//stop time
 	}
-	else {
-		//take the time line value
+	else {		
 		FbxTimeSpan timeLineSpan;
 		pScene->GetGlobalSettings().GetTimelineDefaultTimeSpan(timeLineSpan);
 		startTime = timeLineSpan.GetStart();
 		stopTime = timeLineSpan.GetStop();
-
-
 	}
-
-	currentTime = startTime;
+	currentTime = startTime;		
 	
-	animStatus = MUST_BE_LOADED;
+	animStatus = MUST_BE_REFRESHED;
 
 }
 
-void FbxParser::displayMetaData(FbxScene *pScene)
+void FbxParser::DisplayMetaData(FbxScene *pScene)
 {
 	FBXSDK_printf("\n\n--------------------------Meta Data------------------------------\n\n");
 	FbxDocumentInfo *sceneInfo = pScene->GetSceneInfo();
@@ -256,7 +431,7 @@ void FbxParser::displayMetaData(FbxScene *pScene)
 	}
 }
 
-void FbxParser::displayGlobalLightSettings(FbxGlobalSettings *pGlobalSettings)
+void FbxParser::DisplayGlobalLightSettings(FbxGlobalSettings *pGlobalSettings)
 {
 	FBXSDK_printf("\n\n---------------------Global Light Settings---------------------\n\n");
 
@@ -264,10 +439,10 @@ void FbxParser::displayGlobalLightSettings(FbxGlobalSettings *pGlobalSettings)
 	FBXSDK_printf("ambient color: \n(red)%lf, (green)%lf, (blue)%lf\n\n", color.mRed, color.mGreen, color.mBlue);
 }
 
-void FbxParser::displayHierarchy(FbxNode *node, int depth, int currIndex, int parentIndex)
+void FbxParser::DisplayHierarchy(FbxNode *node, int depth, int currIndex, int parentIndex)
 {		
 	FbxString jointName = node->GetName();
-	//display the hierarchy
+	//Display the hierarchy
 	FbxString nodeNameBuf("");
 	for (int i = 0; i != depth; ++i) {
 		nodeNameBuf += "   ";
@@ -276,34 +451,34 @@ void FbxParser::displayHierarchy(FbxNode *node, int depth, int currIndex, int pa
 	nodeNameBuf += "\n";
 	FBXSDK_printf(nodeNameBuf.Buffer());
 	
-	//current node is a joint if its node attribute type is skeleton
+	//if the type of current node is Skeleton, then it's a joint
 	if (node->GetNodeAttribute() && node->GetNodeAttribute()->GetAttributeType() &&
 		node->GetNodeAttribute()->GetAttributeType() == FbxNodeAttribute::eSkeleton) {
 		Joint jointTmp;
-		jointTmp.jointName = jointName;
-		jointTmp.parentIndex = parentIndex;
-		jointTmp.currentIndex = currIndex;
-		skeleton.joints.push_back(jointTmp);
+		jointTmp.jointName = jointName;		
+		jointTmp.parentIndex = parentIndex;		//parent index
+		jointTmp.currentIndex = currIndex;	
+		skeleton.joints.push_back(jointTmp);	
 	}
 
-	//display the hierarchy recursively
+	//Display the hierarchy recursively
 	for (int i = 0; i != node->GetChildCount(); ++i) {
-		displayHierarchy(node->GetChild(i), depth + 1, skeleton.joints.size(), currIndex);
+		DisplayHierarchy(node->GetChild(i), depth + 1, skeleton.joints.size(), currIndex);
 	}
 }
 
-void FbxParser::displayHierarchy(FbxScene *pScene)
+void FbxParser::DisplayHierarchy(FbxScene *pScene)
 {
 	FBXSDK_printf("\n\n---------------------------Hierarchy-------------------------------\n\n");
 
 	FbxNode *rootNode = pScene->GetRootNode();
 	int childCount = rootNode->GetChildCount();
 	for (int i = 0; i != childCount; ++i) {
-		displayHierarchy(rootNode->GetChild(i), 0, 0, -1);
+		DisplayHierarchy(rootNode->GetChild(i), 0, 0, -1);
 	}
 }
 
-void FbxParser::displayContent(FbxScene *pScene)
+void FbxParser::DisplayContent(FbxScene *pScene)
 {
 	FBXSDK_printf("\n\n------------------------Node Content---------------------------\n\n");
 
@@ -311,18 +486,18 @@ void FbxParser::displayContent(FbxScene *pScene)
 	int childCount = rootNode->GetChildCount();
 	if (rootNode) {
 		for (int i = 0; i != childCount; ++i) {
-			displayContent(rootNode->GetChild(i));
+			DisplayContent(rootNode->GetChild(i));
 		}
 	}
 	else {
 		FBXSDK_printf("null node!\n");
 	}
-	//displayTexture(pScene);
+	//DisplayTexture(pScene);
 }
 
-void FbxParser::displayContent(FbxNode *node)
+void FbxParser::DisplayContent(FbxNode *node)
 {
-	displayTexture(node);
+	DisplayTexture(node);
 	
 	FbxNodeAttribute::EType attributeType;
 	if (!node->GetNodeAttribute()) {
@@ -330,21 +505,21 @@ void FbxParser::displayContent(FbxNode *node)
 	}
 	else {
 		attributeType = node->GetNodeAttribute()->GetAttributeType();
-		//display different informations according to the attribute type of node
+		//Display different informations according to the attribute type of node
 		switch (attributeType)
 		{
 		case fbxsdk::FbxNodeAttribute::eMarker:
-			displayMarker(node);	
+			DisplayMarker(node);	
 			break;
 		case fbxsdk::FbxNodeAttribute::eSkeleton:
 		{
 			FbxAMatrix dummyGlobalPostion;
 
-			displaySkeleton(node);
+			//DisplaySkeleton(node);
 			break;
 		}
 		case fbxsdk::FbxNodeAttribute::eMesh:
-			displayMesh(node);
+			DisplayMesh(node);
 			break;
 		case fbxsdk::FbxNodeAttribute::eCamera:
 			FBXSDK_printf("eCamera\n");
@@ -356,16 +531,16 @@ void FbxParser::displayContent(FbxNode *node)
 	}
 	int childCount = node->GetChildCount();
 	for (int i = 0; i != childCount; ++i) {
-		displayContent(node->GetChild(i));
+		DisplayContent(node->GetChild(i));
 	}
 }
 
-FbxAMatrix FbxParser::getGlobalPosition(FbxNode *node, FbxTime currTime, FbxAMatrix *parentGlobalMatrix)
+FbxAMatrix FbxParser::GetGlobalPosition(FbxNode *node, FbxTime currTime, FbxAMatrix *parentGlobalMatrix)
 {
 	return node->EvaluateGlobalTransform(currTime);
 }
 
-FbxAMatrix FbxParser::getGeometry(FbxNode *node)
+FbxAMatrix FbxParser::GetGeometry(FbxNode *node)
 {
 	const FbxVector4 IT = node->GetGeometricTranslation(FbxNode::eSourcePivot);
 	const FbxVector4 IR = node->GetGeometricRotation(FbxNode::eSourcePivot);
@@ -373,7 +548,7 @@ FbxAMatrix FbxParser::getGeometry(FbxNode *node)
 	return FbxAMatrix(IT, IR, IS);
 }
 
-void FbxParser::displayTexture(FbxNode *node)
+void FbxParser::DisplayTexture(FbxNode *node)
 {
 	FbxMesh *nodeMesh = node->GetMesh();
 	if (nodeMesh) {
@@ -393,7 +568,7 @@ void FbxParser::displayTexture(FbxNode *node)
 							FbxFileTexture *fileTexture = FbxCast<FbxFileTexture>(layeredTexture->GetSrcObject<FbxFileTexture>(c));
 							const char *textureName = fileTexture->GetFileName();
 							FBXSDK_printf("texture name: %s\n", textureName);
-							setTextureFileName(FbxString(textureName));
+							SetTextureFileName(FbxString(textureName));
 						}
 					}
 				}
@@ -403,7 +578,7 @@ void FbxParser::displayTexture(FbxNode *node)
 						FbxFileTexture *fileTexture = FbxCast<FbxFileTexture>(prop.GetSrcObject<FbxFileTexture>(i));
 						const char *textureName = fileTexture->GetFileName();
 						FBXSDK_printf("texture name: %s\n", textureName);
-						setTextureFileName(FbxString(textureName));
+						SetTextureFileName(FbxString(textureName));
 					}
 				}
 			}
@@ -411,7 +586,7 @@ void FbxParser::displayTexture(FbxNode *node)
 	}
 }
 
-void FbxParser::displayTexture(FbxScene *pScene)
+void FbxParser::DisplayTexture(FbxScene *pScene)
 {
 	const int textureCount = pScene->GetTextureCount();
 	for (int textureIndex = 0; textureIndex != textureCount; ++textureIndex) {
@@ -426,7 +601,7 @@ void FbxParser::displayTexture(FbxScene *pScene)
 	}
 }
 
-void FbxParser::displayPose(FbxScene *pScene)
+void FbxParser::DisplayPose(FbxScene *pScene)
 {
 	FBXSDK_printf("\n\n---------------------------Pose-------------------------------\n\n");
 	int      i, j, k, lPoseCount;
@@ -439,26 +614,26 @@ void FbxParser::displayPose(FbxScene *pScene)
 		FbxPose* lPose = pScene->GetPose(i);
 
 		lName = lPose->GetName();
-		displayString("Pose Name: ", lName.Buffer());
+		DisplayString("Pose Name: ", lName.Buffer());
 
-		displayBool("    Is a bind pose: ", lPose->IsBindPose());
+		DisplayBool("    Is a bind pose: ", lPose->IsBindPose());
 
-		displayInt("    Number of items in the pose: ", lPose->GetCount());
+		DisplayInt("    Number of items in the pose: ", lPose->GetCount());
 
-		displayString("pose: ", "");
+		DisplayString("pose: ", "");
 		
 		for (j = 0; j<lPose->GetCount(); j++)
 		{
 			lName = lPose->GetNodeName(j).GetCurrentName();
-			//displayString("    Item name: ", lName.Buffer());
+			//DisplayString("    Item name: ", lName.Buffer());
 			FBXSDK_printf("Item %d: %s\n", j, lName);
 			if (!lPose->IsBindPose())
 			{
 				// Rest pose can have local matrix
-				displayBool("    Is local space matrix: ", lPose->IsLocalMatrix(j));
+				DisplayBool("    Is local space matrix: ", lPose->IsLocalMatrix(j));
 			}
 
-			//displayString("    Matrix value: ", "");
+			//DisplayString("    Matrix value: ", "");
 
 			FbxString lMatrixValue;
 
@@ -472,7 +647,7 @@ void FbxParser::displayPose(FbxScene *pScene)
 				lMatrixValue += FbxString("        ") + FbxString(lRowValue);
 			}
 
-			//displayString("", lMatrixValue.Buffer());
+			//DisplayString("", lMatrixValue.Buffer());
 		}
 	}
 
@@ -485,7 +660,7 @@ void FbxParser::displayPose(FbxScene *pScene)
 
 		if (!lCharacter) break;
 
-		displayString("Character Pose Name: ", lCharacter->GetName());
+		DisplayString("Character Pose Name: ", lCharacter->GetName());
 
 		FbxCharacterLink lCharacterLink;
 		FbxCharacter::ENodeId  lNodeId = FbxCharacter::eHips;
@@ -494,7 +669,7 @@ void FbxParser::displayPose(FbxScene *pScene)
 		{
 			FbxAMatrix& lGlobalPosition = lCharacterLink.mNode->EvaluateGlobalTransform(FBXSDK_TIME_ZERO);
 
-			displayString("    Matrix value: ", "");
+			DisplayString("    Matrix value: ", "");
 
 			FbxString lMatrixValue;
 
@@ -507,7 +682,7 @@ void FbxParser::displayPose(FbxScene *pScene)
 				lMatrixValue += FbxString("        ") + FbxString(lRowValue);
 			}
 
-			//displayString("", lMatrixValue.Buffer());
+			//DisplayString("", lMatrixValue.Buffer());
 
 			lNodeId = FbxCharacter::ENodeId(int(lNodeId) + 1);
 		}
@@ -515,7 +690,7 @@ void FbxParser::displayPose(FbxScene *pScene)
 
 }
 
-void FbxParser::displayMarker(FbxNode *node)
+void FbxParser::DisplayMarker(FbxNode *node)
 {
 	FbxMarker *marker = (FbxMarker*)node->GetNodeAttribute();
 	FbxString markerInfo("");
@@ -578,7 +753,7 @@ void FbxParser::displayMarker(FbxNode *node)
 	FBXSDK_printf("IKPivot:    %lf, %lf, %lf", pivot.mData[0], pivot.mData[1], pivot.mData[2]);
 }
 
-void FbxParser::displayMesh(FbxNode *node)
+void FbxParser::DisplayMesh(FbxNode *node)
 {
 	pMesh = (FbxMesh*)node->GetNodeAttribute();
 
@@ -618,7 +793,7 @@ void FbxParser::displayMesh(FbxNode *node)
 
 	FBXSDK_printf("\n\n");
 
-	processJointsAndAnimations(node);
+	ProcessJointsAndAnimations(node);
 	//Polygon Counts
 	polygonCount = pMesh->GetPolygonCount();
 	int vertexCounter = 0;
@@ -628,7 +803,7 @@ void FbxParser::displayMesh(FbxNode *node)
 	polygonPoints.reserve(polygonCount * 4);
 	normals.reserve(polygonCount * 4);
 	uvs.reserve(polygonCount * 4);
-	getTextureUV(pMesh, uvs);
+	GetTextureUV(pMesh, uvs);
 	for (int i = 0; i != polygonCount; ++i) {
 		int polygonSize = pMesh->GetPolygonSize(i);
 		//	normals.resize(polygonSize);
@@ -636,7 +811,7 @@ void FbxParser::displayMesh(FbxNode *node)
 		for (int j = 0; j != polygonSize; ++j) {
 			int vertexIndex = pMesh->GetPolygonVertex(i, j);
 			FbxVector4 vec = controlPointsInfo[vertexIndex].ctrlPoint;
-			getNormal(pMesh, vertexIndex, vertexCounter, normals);
+			GetNormal(pMesh, vertexIndex, vertexCounter, normals);
 
 			polygonPoints.push_back(vec);
 			++vertexCounter;
@@ -644,11 +819,10 @@ void FbxParser::displayMesh(FbxNode *node)
 	}
 }
 
-
-void FbxParser::getNormal(FbxMesh *mesh, int vertexIndex, int vertexCounter, vector<FbxVector4> &normals)
+void FbxParser::GetNormal(FbxMesh *mesh, int vertexIndex, int vertexCounter, vector<FbxVector4> &normals)
 {
 	if (mesh->GetElementNormalCount() < 1) {
-		throw std::exception("invalid normal number\n");
+		return;
 	}
 
 	FbxVector4 normal;
@@ -659,7 +833,7 @@ void FbxParser::getNormal(FbxMesh *mesh, int vertexIndex, int vertexCounter, vec
 		switch (vertexNormal->GetReferenceMode())
 		{
 		case FbxGeometryElement::eDirect:
-			normal = vertexNormal->GetDirectArray().GetAt(vertexCounter).mData;
+			normal = vertexNormal->GetDirectArray().GetAt(vertexIndex).mData;
 			break;
 		case FbxGeometryElement::eIndexToDirect:
 		{
@@ -692,7 +866,7 @@ void FbxParser::getNormal(FbxMesh *mesh, int vertexIndex, int vertexCounter, vec
 	normals.push_back(normal);
 }
 
-void FbxParser::getTextureUV(FbxMesh *mesh, vector<FbxVector2> &uvs)
+void FbxParser::GetTextureUV(FbxMesh *mesh, vector<FbxVector2> &uvs)
 {
 	//get all UV set names
 	FbxStringList lUVSetNameList;
@@ -769,13 +943,13 @@ void FbxParser::getTextureUV(FbxMesh *mesh, vector<FbxVector2> &uvs)
 	}
 }
 
-void FbxParser::processJointsAndAnimations(FbxNode *node)
+void FbxParser::ProcessJointsAndAnimations(FbxNode *node)
 {
 	FbxMesh *currMesh = node->GetMesh();
 	unsigned int numOfDeformers = currMesh->GetDeformerCount();
 
 	//Get transform matrix
-	FbxAMatrix geometryTransform = getGeometryTransformation(node);
+	FbxAMatrix geometryTransform = GetGeometryTransformation(node);
 	
 	//A deformer is a FBX thing, which contains some clusters
 	//A cluster contains a link, which is basically a joint
@@ -792,7 +966,7 @@ void FbxParser::processJointsAndAnimations(FbxNode *node)
 		for (unsigned int clusterIndex = 0; clusterIndex != numOfClusters; ++clusterIndex) {
 			FbxCluster *currCluster = currSkin->GetCluster(clusterIndex);
 			FbxString currJointName = currCluster->GetLink()->GetName();
-			int currJointIndex = findJointIndexByName(currJointName);
+			int currJointIndex = FindJointIndexByName(currJointName);
 			if (currJointIndex == -1) {
 				FBXSDK_printf("error: can't find the joint: %s\n\n", currJointName);
 				continue;
@@ -812,21 +986,17 @@ void FbxParser::processJointsAndAnimations(FbxNode *node)
 
 
 			FbxAMatrix localMatrix = currCluster->GetLink()->EvaluateLocalTransform();
-			FbxAMatrix globalMatrix = currCluster->GetLink()->EvaluateGlobalTransform();
 
-
-			skeleton.joints[currJointIndex].node = currCluster->GetLink();
-			skeleton.joints[currJointIndex].localMatrix = localMatrix;
-			skeleton.joints[currJointIndex].globalMatrix = globalMatrix;
-
-			//Associate each joint with the Control Points it affects
+			skeleton.joints[currJointIndex].node = currCluster->GetLink();	//获取当前的关节
+			skeleton.joints[currJointIndex].localMatrix = localMatrix;			
+			
 			unsigned int numOfIndices = currCluster->GetControlPointIndicesCount();
 			for (unsigned int i = 0; i != numOfIndices; ++i) {
 				IndexWeightPair weightPair;
-				weightPair.index = currJointIndex;
-				weightPair.weight = currCluster->GetControlPointWeights()[i];
+				weightPair.index = currJointIndex;		
+				weightPair.weight = currCluster->GetControlPointWeights()[i];		//weight to control point of current joint
+				//add index-weight pair into ControlPointInfo Struct
 				controlPointsInfo[currCluster->GetControlPointIndices()[i]].weightPairs.push_back(weightPair);
-				//controlPointsInfo.weightPairs.push_back(weightPair);
 			}
 
 			//Get Animation information
@@ -855,62 +1025,10 @@ void FbxParser::processJointsAndAnimations(FbxNode *node)
 		}
 	}
 	
-
-
-	//for (int i = 0; i != controlPointsInfo.size(); ++i) {
-	//	for (int j = 0; j != controlPointsInfo[i].weightPairs.size(); ++j) {
-	//		Joint currJoint = skeleton.joints[controlPointsInfo[i].weightPairs[j].index];
-
-	//		FbxAMatrix bindInverse = currJoint.globalMatrix.Inverse();
-
-	//		double weight = controlPointsInfo[i].weightPairs[j].weight;
-
-	//		FbxMatrix globalTransform;
-	//		globalTransform.SetIdentity();
-	//		KeyFrame **tmp = &currJoint.animation;
-	//		while ((*tmp)->next)
-	//		{
-	//			globalTransform += (*tmp)->globalTransform;
-	//			*tmp = (*tmp)->next;
-	//		}
-	//		FbxVector4 globalPos = FbxVector4(globalTransform.GetRow(0));
-	//		display3DVector("before: ", controlPointsInfo[i].ctrlPoint);
-
-	//		FbxVector4 wv = bindInverse.MultT(globalPos);
-	//		wv *= weight;
-
-	//		controlPointsInfo[i].ctrlPoint += wv;
-
-
-	//		//controlPointsInfo[i].ctrlPoint = ((controlPointsInfo[i].ctrlPoint) + bindInverse.GetT() + globalPos) * weight;
-	//		display3DVector("after: ", controlPointsInfo[i].ctrlPoint);
-
-	//		//FbxMatrix globalMatrix = calcGlobalMatrix(controlPointsInfo[i].weightPairs[j].index);
-	//		//FbxMatrix offsetMatrix = globalMatrix.Inverse();
-	//		///*controlPoint.ctrlPoint.mData[0] += mat.Get(0, 0) * weight;
-	//		//controlPoint.ctrlPoint.mData[1] += mat.Get(0, 1) * weightS;
-	//		//controlPoint.ctrlPoint.mData[2] += mat.Get(0, 2) * weight;*/
-	//		//display3DVector("before: ", controlPointsInfo[i].ctrlPoint);
-	//		//controlPointsInfo[i].ctrlPoint.mData[0] += (globalMatrix * globalTransform * offsetMatrix * weight).Get(0, 0);
-	//		//controlPointsInfo[i].ctrlPoint.mData[1] += (globalMatrix * globalTransform * offsetMatrix * weight).Get(0, 1);
-	//		//controlPointsInfo[i].ctrlPoint.mData[2] += (globalMatrix * globalTransform * offsetMatrix * weight).Get(0, 2);
-
-	//		//display3DVector("after: ", controlPointsInfo[i].ctrlPoint);
-	//		FBXSDK_printf("\n");
-	//		//controlPoint.ctrlPoint += calcGlobalMatrix(controlPoint.weightPairs[j].index);
-	//		
-	//	}
-	//}
-
-	//for (int i = 0; i != skeleton.joints.size(); ++i) {
-	//	FbxMatrix globalMatrix = calcGlobalMatrix(i);
-	//	FbxMatrix offsetMatrix = globalMatrix.Inverse();
-	//	Joint currJoint = skeleton.joints[i];
-	//}
-	debugSumOfWeights();
+	DebugSumOfWeights();		//should be 1.0
 }
 
-FbxMatrix FbxParser::calcGlobalMatrix(int index)
+FbxMatrix FbxParser::CalcGlobalMatrix(int index)
 {
 	FbxMatrix globalMatrix;
 	globalMatrix.SetIdentity();
@@ -918,11 +1036,11 @@ FbxMatrix FbxParser::calcGlobalMatrix(int index)
 		return globalMatrix;
 	else {
 		Joint currJoint = skeleton.joints[index];
-		return calcGlobalMatrix(currJoint.parentIndex) * currJoint.globalMatrix;
+		return CalcGlobalMatrix(currJoint.parentIndex) * currJoint.globalMatrix;
 	}
 }
 
-FbxAMatrix FbxParser::getGeometryTransformation(FbxNode *node) 
+FbxAMatrix FbxParser::GetGeometryTransformation(FbxNode *node) 
 {
 	if (!node) {
 		throw std::exception("Null for mesh geometry\n\n");
@@ -936,7 +1054,7 @@ FbxAMatrix FbxParser::getGeometryTransformation(FbxNode *node)
 
 }
 
-int FbxParser::findJointIndexByName(const FbxString& jointName)
+int FbxParser::FindJointIndexByName(const FbxString& jointName)
 {
 	for (int index = 0; index != skeleton.joints.size(); ++index) {
 		if (skeleton.joints[index].jointName == jointName)
@@ -945,7 +1063,7 @@ int FbxParser::findJointIndexByName(const FbxString& jointName)
 	return -1;
 }
 
-void FbxParser::displaySkeleton(FbxNode *node)
+void FbxParser::DisplaySkeleton(FbxNode *node)
 {
 	FBXSDK_printf("\n\n-----------------------Skeleton---------------------------\n\n");
 	FbxSkeleton *skeleton = (FbxSkeleton*)node->GetNodeAttribute();
@@ -981,13 +1099,16 @@ void FbxParser::displaySkeleton(FbxNode *node)
 	FBXSDK_printf("limb node color:	red: %lf, green: %lf, blue: %lf\n", color[0], color[1], color[2]);
 }
 
-void FbxParser::covertFormat()
+void FbxParser::CovertFormat()
 {
 	const char* lFileTypes[] =
 	{
-		"_dae.dae", "Collada DAE (*.dae)",
-		"_obj.obj", "Alias OBJ (*.obj)",
-		"_dxf.dxf", "AutoCAD DXF (*.dxf)"
+		"_FBX_Binary.fbx", "FBX binary(*.fbx)",
+		"_FBX_ascii.fbx", "FBX ascii(*.fbx)",
+		"_FBX_encrypted.fbx", "FBX encrypted(*.fbx)",
+		"_FBX_6.0_binary.fbx", "FBX 6.0 binary(*.fbx)",
+		"_FBX_6.0_encrpyted.fbx", "FBX 6.0 encrpyted(*.fbx)",
+		"_FBX_6.0_ascii.fbx", "FBX 6.0 ascii(*.fbx)"
 	};
 	const size_t lFileNameLength = strlen(fbxFile.Buffer());
 	char* lNewFileName = new char[lFileNameLength + 64];
@@ -1029,7 +1150,7 @@ void FbxParser::covertFormat()
 	delete[] lNewFileName;
 }
 
-void FbxParser::debugSumOfWeights()
+void FbxParser::DebugSumOfWeights()
 {
 	for (auto it = controlPointsInfo.begin(); it != controlPointsInfo.end(); ++it) {
 		vector<IndexWeightPair> weightPairs = it->second.weightPairs;

@@ -2,35 +2,32 @@
 #include <iostream> 
 using namespace std;
 
+FbxParser *parser;
+bool gSupportVBO;
+
 int main(int argc, char **argv)
 {
-	FbxParser *parser = new FbxParser(FbxString("soldier"));
-	bool loadResult = parser->loadScene();
-	if (loadResult) {
-		parser->displayGlobalLightSettings(&parser->getFbxScene()->GetGlobalSettings());		//display global light settings
-		parser->displayHierarchy(parser->getFbxScene());		//display hierarchy of model
-		parser->displayContent(parser->getFbxScene());	//display content
-		parser->displayPose(parser->getFbxScene());
+	parser = new FbxParser(FbxString("soldier"));
+	bool loadResult = parser->LoadScene();		//load scene
+	if (loadResult) 
+	{
+		parser->DisplayGlobalLightSettings(&parser->GetFbxScene()->GetGlobalSettings());		//Display global light settings
+		parser->DisplayHierarchy(parser->GetFbxScene());		//Display hierarchy of model
+		parser->DisplayContent(parser->GetFbxScene());	//Display content
+		parser->DisplayPose(parser->GetFbxScene());
 	}
-	else {
-		FBXSDK_printf("error: load scene failed.\n\n");
+	else 
+	{
+		FBXSDK_printf("error: load scene failed, check if the file exists.\n\n");
+		system("pause");
 		exit(1);
 	}
-	
-	if (parser) {
-		ModelReconstruct *model = new ModelReconstruct(parser, argc, argv);
-		model->displayModel();	//show the model
-		model->activeReshapFunc();	//reshape window
-		model->activeIdleFunc();		//called when the window is idle
-		model->activateKeyBoard();	//active keyboard so that we can move the camera/model by pressing a key
-		model->activeKeyUpFunc();	//stop moving the camera
-		model->activateMouseFunc();	//active the mouse function to get the cooridinate of mouse in the window
-		model->activateMotionFunc();	//change the direction of camera	
-		//model->timerFunc();
-		model->loop();		//glutMainLoop
-	}
-	if (loadResult) {
-		parser->covertFormat();
+
+
+	if (parser) 
+	{
+		gSupportVBO = InitOpenGL(argc, argv);	//Initialize the environment of OpenGL
+		RunOpenGL();
 	}
 	system("pause");
 }

@@ -48,13 +48,13 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>G:\FBX_SDK\2018.1.1\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>F:\FreeImage\Dist\x32;G:\FBX_SDK\2018.1.1\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>G:\FBX_SDK\2018.1.1\lib\vs2013\x86\debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>libfbxsdk-md.lib;glut32.lib;glew32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>F:\FreeImage\Dist\x32;G:\FBX_SDK\2018.1.1\lib\vs2013\x86\debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>libfbxsdk-md.lib;glut32.lib;glew32.lib;FreeImage.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -72,29 +72,28 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="common.cpp" />
     <ClCompile Include="FbxParser.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="AddMenuHelper.cpp" />
     <ClCompile Include="ModelReconstruct.cpp" />
-    <ClCompile Include="RGBImgStructure.cpp" />
-    <ClCompile Include="SceneCache.cpp" />
-    <ClCompile Include="tgaParser.cpp" />
+    <ClCompile Include="CameraManager.cpp" />
+    <ClCompile Include="Utilities.cpp" />
+    <ClCompile Include="VBOMesh.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="SceneCache.h" />
+    <ClInclude Include="AddMenuHelper.h" />
+    <ClInclude Include="CameraManager.h" />
     <ClInclude Include="Utilities.h" />
-    <ClInclude Include="common.h" />
     <ClInclude Include="FbxParser.h" />
     <ClInclude Include="ModelReconstruct.h" />
-    <ClInclude Include="RGBImgStructure.h" />
-    <ClInclude Include="stb_image.h" />
-    <ClInclude Include="tgaParser.h" />
+    <ClInclude Include="VBOMesh.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="C:\Users\Administrator\Desktop\reconstruct-bunny.png" />
   </ItemGroup>
   <ItemGroup>
     <None Include="bunny.fbx" />
+    <None Include="ClassDiagram.cd" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

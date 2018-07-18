@@ -1,66 +1,5 @@
-#include "SceneCache.h"
+#include "VBOMesh.h"
 
-namespace
-{
-	const float ANGLE_TO_RADIAN = 3.1415926f / 180.f;
-	const GLfloat BLACK_COLOR[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-	const GLfloat GREEN_COLOR[] = { 0.0f, 1.0f, 0.0f, 1.0f };
-	const GLfloat WHITE_COLOR[] = { 1.0f, 1.0f, 1.0f, 1.0f };
-	const GLfloat WIREFRAME_COLOR[] = { 0.5f, 0.5f, 0.5f, 1.0f };
-
-	const int TRIANGLE_VERTEX_COUNT = 3;
-
-	// Four floats for every position.
-	const int VERTEX_STRIDE = 4;
-	// Three floats for every normal.
-	const int NORMAL_STRIDE = 3;
-	// Two floats for every UV.
-	const int UV_STRIDE = 2;
-
-	const GLfloat DEFAULT_LIGHT_POSITION[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-	const GLfloat DEFAULT_DIRECTION_LIGHT_POSITION[] = { 0.0f, 0.0f, 1.0f, 0.0f };
-	const GLfloat DEFAULT_SPOT_LIGHT_DIRECTION[] = { 0.0f, 0.0f, -1.0f };
-	const GLfloat DEFAULT_LIGHT_COLOR[] = { 1.0f, 1.0f, 1.0f, 1.0f };
-	const GLfloat DEFAULT_LIGHT_SPOT_CUTOFF = 180.0f;
-
-	// Get specific property value and connected texture if any.
-	// Value = Property value * Factor property value (if no factor property, multiply by 1).
-	FbxDouble3 GetMaterialProperty(const FbxSurfaceMaterial * pMaterial,
-		const char * pPropertyName,
-		const char * pFactorPropertyName,
-		GLuint & pTextureName)
-	{
-		FbxDouble3 lResult(0, 0, 0);
-		const FbxProperty lProperty = pMaterial->FindProperty(pPropertyName);
-		const FbxProperty lFactorProperty = pMaterial->FindProperty(pFactorPropertyName);
-		if (lProperty.IsValid() && lFactorProperty.IsValid())
-		{
-			lResult = lProperty.Get<FbxDouble3>();
-			double lFactor = lFactorProperty.Get<FbxDouble>();
-			if (lFactor != 1)
-			{
-				lResult[0] *= lFactor;
-				lResult[1] *= lFactor;
-				lResult[2] *= lFactor;
-			}
-		}
-
-		if (lProperty.IsValid())
-		{
-			const int lTextureCount = lProperty.GetSrcObjectCount<FbxFileTexture>();
-			if (lTextureCount)
-			{
-				const FbxFileTexture* lTexture = lProperty.GetSrcObject<FbxFileTexture>();
-				if (lTexture && lTexture->GetUserDataPtr())
-				{
-					pTextureName = *(static_cast<GLuint *>(lTexture->GetUserDataPtr()));
-				}
-			}
-		}
-
-		return lResult;
-	}
-}
 
 VBOMesh::VBOMesh() : mHasNormal(false), mHasUV(false), mAllByControlPoint(true)
 {
@@ -390,7 +329,7 @@ void VBOMesh::UpdateVertexPosition(const FbxMesh * pMesh, const FbxVector4 * pVe
 	}
 }
 
-void VBOMesh::Draw(int pMaterialIndex) const
+void VBOMesh::Draw(int pMaterialIndex, ShadingMode pShadingMode) const
 {
 #if _MSC_VER >= 1900 && defined(_WIN64)
 	// this warning occurs when building 64bit.
@@ -400,25 +339,30 @@ void VBOMesh::Draw(int pMaterialIndex) const
 
 	// Where to start.
 	GLsizei lOffset = mSubMeshes[pMaterialIndex]->IndexOffset * sizeof(unsigned int);
-	
+	if (pShadingMode == SHADING_MODE_SHADED)
+	{
+		//FBXSDK_printf("draw shading mode\n");
 		const GLsizei lElementCount = mSubMeshes[pMaterialIndex]->TriangleCount * 3;
 		glDrawElements(GL_TRIANGLES, lElementCount, GL_UNSIGNED_INT, reinterpret_cast<const GLvoid *>(lOffset));
-	
-	//else
-	//{
-	//	for (int lIndex = 0; lIndex < mSubMeshes[pMaterialIndex]->TriangleCount; ++lIndex)
-	//	{
-	//		// Draw line loop for every triangle.
-	//		glDrawElements(GL_LINE_LOOP, TRIANGLE_VERTEX_COUNT, GL_UNSIGNED_INT, reinterpret_cast<const GLvoid *>(lOffset));
-	//		lOffset += sizeof(unsigned int) * TRIANGLE_VERTEX_COUNT;
-	//	}
-	//}
+	}
+	else
+	{
+		//FBXSDK_printf("draw line mode\n");
+
+		for (int lIndex = 0; lIndex < mSubMeshes[pMaterialIndex]->TriangleCount; ++lIndex)
+		{
+			//glColor4fv(WIREFRAME_COLOR);
+			// Draw line loop for every triangle.
+			glDrawElements(GL_LINE_LOOP, TRIANGLE_VERTEX_COUNT, GL_UNSIGNED_INT, reinterpret_cast<const GLvoid *>(lOffset));
+			lOffset += sizeof(unsigned int) * TRIANGLE_VERTEX_COUNT;
+		}
+	}
 #if _MSC_VER >= 1900 && defined(_WIN64)
 #pragma warning( pop )
 #endif
 }
 
-void VBOMesh::BeginDraw() const
+void VBOMesh::BeginDraw(ShadingMode pShadingMode) const
 {
 	// Push OpenGL attributes.
 	glPushClientAttrib(GL_CLIENT_VERTEX_ARRAY_BIT);
@@ -433,7 +377,7 @@ void VBOMesh::BeginDraw() const
 	glEnableClientState(GL_VERTEX_ARRAY);
 
 	// Set normal array.
-	if (mHasNormal)
+	if (mHasNormal && pShadingMode == SHADING_MODE_SHADED)
 	{
 		glBindBuffer(GL_ARRAY_BUFFER, mVBONames[NORMAL_VBO]);
 		glNormalPointer(GL_FLOAT, 0, 0);
@@ -441,7 +385,7 @@ void VBOMesh::BeginDraw() const
 	}
 
 	// Set UV array.
-	if (mHasUV)
+	if (mHasUV && pShadingMode == SHADING_MODE_SHADED)
 	{
 		glBindBuffer(GL_ARRAY_BUFFER, mVBONames[UV_VBO]);
 		glTexCoordPointer(UV_STRIDE, GL_FLOAT, 0, 0);
@@ -451,18 +395,18 @@ void VBOMesh::BeginDraw() const
 	// Set index array.
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mVBONames[INDEX_VBO]);
 
-	/*if (pShadingMode == SHADING_MODE_SHADED)
-	{*/
+	if (pShadingMode == SHADING_MODE_SHADED)
+	{
 		glEnable(GL_LIGHTING);
 
 		glEnable(GL_TEXTURE_2D);
 
 		glEnable(GL_NORMALIZE);
-	/*}
+	}
 	else
 	{
 		glColor4fv(WIREFRAME_COLOR);
-	}*/
+	}
 }
 
 void VBOMesh::EndDraw() const
@@ -480,43 +424,6 @@ void VBOMesh::EndDraw() const
 	glPopClientAttrib();
 }
 
-void VBOMesh::ReadVertexCacheData(FbxMesh *mesh, FbxTime &time, FbxVector4 *vertexArray) const
-{
-
-	FbxVertexCacheDeformer* lDeformer = static_cast<FbxVertexCacheDeformer*>(mesh->GetDeformer(0, FbxDeformer::eVertexCache));
-	FbxCache*               lCache = lDeformer->GetCache();
-	int                     lChannelIndex = lCache->GetChannelIndex(lDeformer->Channel.Get());
-	unsigned int            lVertexCount = (unsigned int)mesh->GetControlPointsCount();
-	bool                    lReadSucceed = false;
-	float*                  lReadBuf = NULL;
-	unsigned int			BufferSize = 0;
-
-	if (lDeformer->Type.Get() != FbxVertexCacheDeformer::ePositions)
-		// only process positions
-		return;
-
-	unsigned int Length = 0;
-	lCache->Read(NULL, Length, FBXSDK_TIME_ZERO, lChannelIndex);
-	if (Length != lVertexCount * 3)
-		// the content of the cache is by vertex not by control points (we don't support it here)
-		return;
-
-	lReadSucceed = lCache->Read(&lReadBuf, BufferSize, time, lChannelIndex);
-	if (lReadSucceed)
-	{
-		unsigned int lReadBufIndex = 0;
-
-		while (lReadBufIndex < 3 * lVertexCount)
-		{
-			// In statements like "pVertexArray[lReadBufIndex/3].SetAt(2, lReadBuf[lReadBufIndex++])", 
-			// on Mac platform, "lReadBufIndex++" is evaluated before "lReadBufIndex/3". 
-			// So separate them.
-			vertexArray[lReadBufIndex / 3].mData[0] = lReadBuf[lReadBufIndex]; lReadBufIndex++;
-			vertexArray[lReadBufIndex / 3].mData[1] = lReadBuf[lReadBufIndex]; lReadBufIndex++;
-			vertexArray[lReadBufIndex / 3].mData[2] = lReadBuf[lReadBufIndex]; lReadBufIndex++;
-		}
-	}
-}
 MaterialCache::MaterialCache() : mShinness(0)
 {
 
@@ -527,27 +434,69 @@ MaterialCache::~MaterialCache()
 
 }
 
+// Get specific property value and connected texture if any.
+// Value = Property value * Factor property value (if no factor property, multiply by 1).
+FbxDouble3 GetMaterialProperty(const FbxSurfaceMaterial * pMaterial,
+	const char * pPropertyName,
+	const char * pFactorPropertyName,
+	GLuint & pTextureName)
+{
+	FbxDouble3 lResult(0, 0, 0);
+	const FbxProperty lProperty = pMaterial->FindProperty(pPropertyName);
+	const FbxProperty lFactorProperty = pMaterial->FindProperty(pFactorPropertyName);
+	if (lProperty.IsValid() && lFactorProperty.IsValid())
+	{
+		lResult = lProperty.Get<FbxDouble3>();
+		double lFactor = lFactorProperty.Get<FbxDouble>();
+		if (lFactor != 1)
+		{
+			lResult[0] *= lFactor;
+			lResult[1] *= lFactor;
+			lResult[2] *= lFactor;
+		}
+	}
+
+	if (lProperty.IsValid())
+	{
+		const int lTextureCount = lProperty.GetSrcObjectCount<FbxFileTexture>();
+		if (lTextureCount)
+		{
+			const FbxFileTexture* lTexture = lProperty.GetSrcObject<FbxFileTexture>();
+			if (lTexture && lTexture->GetUserDataPtr())
+			{
+				pTextureName = *(static_cast<GLuint *>(lTexture->GetUserDataPtr()));
+			}
+		}
+	}
+
+	return lResult;
+}
+
 // Bake material properties.
 bool MaterialCache::Initialize(const FbxSurfaceMaterial * pMaterial)
 {
+	//emissive
 	const FbxDouble3 lEmissive = GetMaterialProperty(pMaterial,
 		FbxSurfaceMaterial::sEmissive, FbxSurfaceMaterial::sEmissiveFactor, mEmissive.mTextureName);
 	mEmissive.mColor[0] = static_cast<GLfloat>(lEmissive[0]);
 	mEmissive.mColor[1] = static_cast<GLfloat>(lEmissive[1]);
 	mEmissive.mColor[2] = static_cast<GLfloat>(lEmissive[2]);
 
+	//ambient
 	const FbxDouble3 lAmbient = GetMaterialProperty(pMaterial,
 		FbxSurfaceMaterial::sAmbient, FbxSurfaceMaterial::sAmbientFactor, mAmbient.mTextureName);
 	mAmbient.mColor[0] = static_cast<GLfloat>(lAmbient[0]);
 	mAmbient.mColor[1] = static_cast<GLfloat>(lAmbient[1]);
 	mAmbient.mColor[2] = static_cast<GLfloat>(lAmbient[2]);
 
+	//diffuse
 	const FbxDouble3 lDiffuse = GetMaterialProperty(pMaterial,
 		FbxSurfaceMaterial::sDiffuse, FbxSurfaceMaterial::sDiffuseFactor, mDiffuse.mTextureName);
 	mDiffuse.mColor[0] = static_cast<GLfloat>(lDiffuse[0]);
 	mDiffuse.mColor[1] = static_cast<GLfloat>(lDiffuse[1]);
 	mDiffuse.mColor[2] = static_cast<GLfloat>(lDiffuse[2]);
 
+	//specular
 	const FbxDouble3 lSpecular = GetMaterialProperty(pMaterial,
 		FbxSurfaceMaterial::sSpecular, FbxSurfaceMaterial::sSpecularFactor, mSpecular.mTextureName);
 	mSpecular.mColor[0] = static_cast<GLfloat>(lSpecular[0]);

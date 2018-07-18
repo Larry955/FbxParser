@@ -1,16 +1,31 @@
-#ifndef _SCENE_CACHE_H
-#define _SCENE_CACHE_H
-
+#pragma once
 #include <fbxsdk.h>
+#include <gl\glew.h>
+#include <GL/gl.h>
+#include <gl\glu.h>
+#include "Utilities.h"
 
-#include "GL/glew.h"
-#define GLUT_DISABLE_ATEXIT_HACK
-#if defined(__MACH__)
-#include <GLUT/glut.h>
-#else
-#include "GL/gl.h"
-#include "GL/glu.h"
-#endif
+const float ANGLE_TO_RADIAN = 3.1415926f / 180.f;
+const GLfloat BLACK_COLOR[] = { 0.0f, 0.0f, 0.0f, 1.0f };
+const GLfloat GREEN_COLOR[] = { 0.0f, 1.0f, 0.0f, 1.0f };
+const GLfloat WHITE_COLOR[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+const GLfloat WIREFRAME_COLOR[] = { 1.0f, 0.0f, 0.0f, 1.0f };
+
+const int TRIANGLE_VERTEX_COUNT = 3;
+
+// Four floats for every position.
+const int VERTEX_STRIDE = 4;
+// Three floats for every normal.
+const int NORMAL_STRIDE = 3;
+// Two floats for every UV.
+const int UV_STRIDE = 2;
+
+const GLfloat DEFAULT_LIGHT_POSITION[] = { 0.0f, 0.0f, 0.0f, 1.0f };
+const GLfloat DEFAULT_DIRECTION_LIGHT_POSITION[] = { 0.0f, 0.0f, 1.0f, 0.0f };
+const GLfloat DEFAULT_SPOT_LIGHT_DIRECTION[] = { 0.0f, 0.0f, -1.0f };
+const GLfloat DEFAULT_LIGHT_COLOR[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+const GLfloat DEFAULT_LIGHT_SPOT_CUTOFF = 180.0f;
+
 
 // Save mesh vertices, normals, UVs and indices in GPU with OpenGL Vertex Buffer Objects
 class VBOMesh
@@ -26,16 +41,15 @@ public:
 	void UpdateVertexPosition(const FbxMesh * pMesh, const FbxVector4 * pVertices) const;
 
 	// Bind buffers, set vertex arrays, turn on lighting and texture.
-	void BeginDraw() const;
+	void BeginDraw(ShadingMode pShadingMode) const;
 	// Draw all the faces with specific material with given shading mode.
-	void Draw(int pMaterialIndex) const;
+	void Draw(int pMaterialIndex, ShadingMode pShadingMode) const;
 	// Unbind buffers, reset vertex arrays, turn off lighting and texture.
 	void EndDraw() const;
 
 	// Get the count of material groups
 	int GetSubMeshCount() const { return mSubMeshes.GetCount(); }
 
-	void ReadVertexCacheData(FbxMesh *mesh, FbxTime &time, FbxVector4 *vertexArray) const;
 private:
 	enum
 	{
@@ -148,5 +162,3 @@ private:
 	PropertyChannel mColorBlue;
 	PropertyChannel mConeAngle;
 };
-
-#endif // _SCENE_CACHE_H

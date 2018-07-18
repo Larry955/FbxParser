@@ -1,254 +1,334 @@
 #include "ModelReconstruct.h"
-
+#include "AddMenuHelper.h"
+#include "CameraManager.h"
+#include "VBOMesh.h"
 #include <vector>
 #include <cstdio>
 using std::vector;
 
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"	//a third part header,used for resolving the image
+extern FbxParser *parser;
+extern bool gSupportVBO;
 
 GLuint  textureArr[1];         // Storage For One Texture ( NEW )  
 
-//it is recommend that only one object of ModelReconstruct be constructed in the memory
-ModelReconstruct::ModelReconstruct(FbxParser *parser, int argc, char **argv) :parser(parser), argc(argc), argv(argv)
-{
-	initModelSpace();
-}
+int windowWidth = 800;
+int windowHeight = 1200;
 
-ModelReconstruct::~ModelReconstruct()
-{
+CameraManager *cameraManager = new CameraManager();
 
-}
-
-void ModelReconstruct::initModelSpace()
+bool InitOpenGL(int argc, char **argv)
 {
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
 	glutInitWindowPosition(100, 100);
-	glutInitWindowSize(800, 800);
+	glutInitWindowSize(windowWidth, windowHeight);
 	glutCreateWindow("Reconstructed FBX Model");
 
-
-	GLfloat mat_ambient[] = { 0.2, 0.2, 0.2, 1.0 };
-	GLfloat mat_diffuse[] = { 0.8, 0.8, 0.8, 1.0 };
-	GLfloat mat_specular[] = { 1.0, 1.0, 1.0, 1.0 };
-	GLfloat mat_shininess[] = { 50.0 };
-
-	glMaterialfv(GL_FRONT, GL_AMBIENT, mat_ambient);
-	glMaterialfv(GL_FRONT, GL_DIFFUSE, mat_diffuse);
-	glMaterialfv(GL_FRONT, GL_SPECULAR, mat_specular);
-	glMaterialfv(GL_FRONT, GL_SHININESS, mat_shininess);
-
+	// Initialize GLEW.
+	GLenum err = glewInit();
+	if (err != GLEW_OK)
+	{
+		FBXSDK_printf("GLEW Error: %s\n", glewGetErrorString(err));
+		return false;
+	}
 	GLfloat light0_diffuse[] = { 1.0, 1.0, 1.0, 1.0 };
 	GLfloat light0_position[] = { 1.0, 0.0, 1.0, 0.0 };
 	glLightfv(GL_LIGHT0, GL_DIFFUSE, light0_diffuse);
 	glLightfv(GL_LIGHT0, GL_POSITION, light0_position);
 
-	GLfloat light1_ambient[] = { 0.0, 0.2, 0.2, 1.0 };
-	GLfloat light1_diffuse[] = { 1.0, 0.0, 0.0, 1.0 };
-	GLfloat light1_specular[] = { 1.0, 0.0, 0.6, 1.0 };
-	GLfloat light1_position[] = { 1.0, 0.0, 1.0, 0.0 };
-	GLfloat spot_direction[] = { 1.0, 1.0, 1.0 };
-
-	glLightfv(GL_LIGHT1, GL_DIFFUSE, light1_diffuse);
-	glLightfv(GL_LIGHT1, GL_AMBIENT, light1_ambient);
-	glLightfv(GL_LIGHT1, GL_SPECULAR, light1_specular);
-	glLightfv(GL_LIGHT1, GL_POSITION, light1_position);
-	glLightf(GL_LIGHT1, GL_SPOT_CUTOFF, 30.0);
-	glLightfv(GL_LIGHT1, GL_SPOT_DIRECTION, spot_direction);
-
 	glEnable(GL_LIGHTING);
 	glEnable(GL_LIGHT0);
-	glEnable(GL_LIGHT1);
 	glEnable(GL_DEPTH_TEST);
-	//glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	gluPerspective(120, 1, 1, 80000);
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-	//FBXSDK_printf("cameraPosX: %f, cameraPosY: %f, cameraPosZ: %f\n\n", cameraPosX, cameraPosY, cameraPosZ);
-
-	gluLookAt(cameraPosX, cameraPosY, cameraPosZ,
-		cameraPosX + cameraRotX, cameraPosY + cameraRotY, cameraPosZ,
-		0, 0, 1);
-
-	loadGLTextures();
+	return true;
 }
 
-void displayCallBack()
+void RunOpenGL()
 {
-	currModelRec->display();
+	glutDisplayFunc(Display);
+	glutReshapeFunc(ReshapeFunc);
+	glutIdleFunc(Display);
+	/*glutKeyboardFunc(KeyFunc);
+	glutKeyboardUpFunc(KeyUpFunc);*/
+	glutMouseFunc(MouseFunc);
+	glutMotionFunc(MotionFunc);
+
+	glutPostRedisplay();
+	glutMainLoop();
 }
 
-void timerCallBack(int)
+void TimerFunc(int)
 {
-	currModelRec->timerFunc();
-	
-}
-
-void ModelReconstruct::timerFunc()
-{
-
 	//loop in the animation stack if not paused
-	if (parser->getStopTime() > parser->getStartTime() && parser->getStatus() == MUST_BE_LOADED) {
-		//set the scene status flag to refresh 
-		//the scene in the next timer call back
-		parser->setAnimStatus(MUST_BE_REFRESHED);
+	if (parser->GetStatus() == MUST_BE_REFRESHED)
+	{
 		glutPostRedisplay();
+	}
+	parser->OnTimerClick();
+	glutTimerFunc((unsigned int)parser->GetFrameTime().GetMilliSeconds(), TimerFunc, 0);
+}
 
-		parser->setCurrentTime(parser->getCurrentTime() + parser->getFrameTime());
-		/*parser->onTimerClick();*/
-		if (parser->getCurrentTime() > parser->getStopTime()) {
-			parser->setCurrentTime(parser->getStartTime());
+void CreateMenus()
+{
+	//create the submenu to select the current animation stack
+	int animStackMenu = glutCreateMenu(AnimStackSelectCallback);
+	int currAnimStackIndex = 0;
+
+	//add the animation stack names
+	const FbxArray<FbxString*> &animStackArray = parser->GetAnimStackArray();
+	for (int poseIndex = 0; poseIndex != animStackArray.GetCount(); ++poseIndex)
+	{
+		glutAddMenuEntry(animStackArray[poseIndex]->Buffer(), poseIndex);
+
+		//track the current animation stack index
+		if (animStackArray[poseIndex]->Compare(parser->GetFbxScene()->ActiveAnimStackName.Get()) == 0)
+		{
+			currAnimStackIndex = poseIndex;
 		}
 	}
-	else {
-		parser->setAnimStatus(REFRESHED);
+
+	//call the animation stack selection callback immediately to initialize the start,stop and current time
+	AnimStackSelectCallback(currAnimStackIndex);
+
+	//create the submenu to select the current camera
+	int cameraMenu = glutCreateMenu(CameraSelectCallback);
+
+	//add the producer cameras
+	glutAddMenuEntry(FBXSDK_CAMERA_PERSPECTIVE, PRODUCER_PERSPECTIVE_ITEM);
+	glutAddMenuEntry(FBXSDK_CAMERA_TOP, PRODUCER_TOP_ITEM);
+	glutAddMenuEntry(FBXSDK_CAMERA_BOTTOM, PRODUCER_BOTTOM_ITEM);
+	glutAddMenuEntry(FBXSDK_CAMERA_FRONT, PRODUCER_FRONT_ITEM);
+	glutAddMenuEntry(FBXSDK_CAMERA_BACK, PRODUCER_BACK_ITEM);
+	glutAddMenuEntry(FBXSDK_CAMERA_RIGHT, PRODUCER_RIGHT_ITEM);
+	glutAddMenuEntry(FBXSDK_CAMERA_LEFT, PRODUCER_LEFT_ITEM);
+
+	//add the camera switcher if there is at least one camera in the scene
+	const FbxArray<FbxNode*> &lCameraArray = parser->GetCameraArray();
+	if (lCameraArray.GetCount() > 0)
+	{
+		glutAddMenuEntry(FBXSDK_CAMERA_SWITCHER, CAMERA_SWITCHER_ITEM);
 	}
-	parser->onTimerClick();
-	glutPostRedisplay();
-	glutTimerFunc((unsigned int)parser->getFrameTime().GetMilliSeconds(), ::timerCallBack, 0);
+
+	//add the cameras contained in the scene
+	for (int lCameraIndex = 0; lCameraIndex != lCameraArray.GetCount(); ++lCameraIndex)
+	{
+		glutAddMenuEntry(lCameraArray[lCameraIndex]->GetName(), lCameraIndex);
+	}
+
+	//create the submenu to select the shading mode
+	const int shadingModeMenu = glutCreateMenu(ShadingModeSelectCallback);
+	glutAddMenuEntry(SHADING_MODE_SHADED_STRING, SHADING_MODE_SHADED_ITEM);
+	glutAddMenuEntry(SHADING_MODE_WIREFRAME_STRING, SHADING_MODE_WIREFRAME_ITEM);
+
+	//Create Menus
+	glutCreateMenu(MenuSelectCallback);
+	glutAddSubMenu("Select Animation Stack", animStackMenu);
+	glutAddSubMenu("Select Camera", cameraMenu);
+	glutAddSubMenu("Select Shading Mode", shadingModeMenu);
+	glutAddMenuEntry("Play", PLAY_ANIMATION);
+	glutAddMenuEntry("Exit", MENU_EXIT);
+	glutAttachMenu(GLUT_RIGHT_BUTTON);
 }
 
-void ModelReconstruct::display()
+void Display()
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glClearColor(1.0, 1.0, 1.0, 1.0);
+	Status animStatus = parser->GetStatus();
+	if (animStatus != UNLOADED && animStatus != MUST_BE_LOADED)
+	{
+		cameraManager->SetCamera(parser->GetFbxScene(), parser->GetCurrentTime(), parser->GetAnimLayer(), parser->GetCameraArray(), windowWidth, windowHeight);
+		//DrawModel();
+		//glDisable(GL_TEXTURE_2D);
 
-	if (deltaMove) {
-		computePos(deltaMove);
+		FbxAMatrix lDummyGlobalPosition;
+		FbxTime currentTime = parser->GetCurrentTime();
+		FbxAnimLayer *currAnimLayer = parser->GetAnimLayer();
+		//DrawSkeleton(parser->GetFbxScene()->GetRootNode(), currentTime, currAnimLayer, lDummyGlobalPosition);
+		
+		//DrawCamera(parser->GetFbxScene()->GetRootNode(), currentTime, currAnimLayer,lDummyGlobalPosition);
+		//lDummyGlobalPosition.SetIdentity();
+		ShadingMode shadingMode = parser->GetShadingMode();
+		DrawMesh(parser->GetFbxScene()->GetRootNode(), currentTime, currAnimLayer, lDummyGlobalPosition, shadingMode,0);
+		//glPopMatrix();
+		DrawGrid(lDummyGlobalPosition);
+
+		glFlush();
 	}
-
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	gluPerspective(120, 1, 1, 80000);
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-
-	gluLookAt(cameraPosX, cameraPosY, cameraPosZ,
-		cameraPosX + cameraRotX, cameraPosY + cameraRotY, cameraPosZ,
-		0, 0, 1);
-	glPushMatrix();
-
-	glRotatef(xRot, 1.0, 0.0, 0.0);
-	glRotatef(zRot, 0.0, 0.0, 1.0);
-	
-
-	drawModel();
-	//glDisable(GL_TEXTURE_2D);
-
-	glPopMatrix();
-
-	FbxAMatrix lDummyGlobalPosition;
-	FbxTime currentTime = parser->getCurrentTime();
-	FbxAnimLayer *currAnimLayer = parser->getAnimLayer();
-	drawSkeleton(parser->getFbxScene()->GetRootNode(), currentTime, currAnimLayer, lDummyGlobalPosition);
-	//drawMesh(parser->getFbxScene()->GetRootNode(), currentTime, currAnimLayer,lDummyGlobalPosition);
-	drawGrid(lDummyGlobalPosition);
-
-
-	glFlush();
 	glutSwapBuffers();
-
-	if (parser->getStatus() == MUST_BE_LOADED)
-		glutTimerFunc((unsigned int)parser->getFrameTime().GetMilliSeconds(), timerCallBack, 0);
+	if (parser->GetStatus() == MUST_BE_LOADED)
+	{
+		// This function is only called in the first display callback
+		// to make sure that the application window is opened and a 
+		// status message is displayed before.
+		parser->LoadCacheRecursive(parser->GetFbxScene(), parser->GetAnimLayer(), parser->GetFbxFileName(), gSupportVBO);
+		parser->SetAnimStatus(MUST_BE_REFRESHED);
+		CreateMenus();
+		glutTimerFunc((unsigned int)parser->GetFrameTime().GetMilliSeconds(), TimerFunc, 0);
+	}
 }
 
-void ModelReconstruct::drawModel()
+void DrawCamera(FbxNode *node, FbxTime currTime, FbxAnimLayer *currAnimLayer, FbxAMatrix &globalPosition)
 {
-	if (parser->getFbxFileName() == "soldier" || parser->getFbxFileName() == "humanoid")
-		glRotatef(90, 1.0, 0.0, 0.0);		//used for soldier.fbx
+	FbxAMatrix lCameraGlobalPosition;
+	FbxVector4 lCameraPosition, lCameraDefaultDirection, lCameraInterestPosition;
 
-	glScalef(xScale, yScale, zScale);
+	if (node->GetNodeAttribute())
+	{
+		if (node->GetNodeAttribute()->GetAttributeType() == FbxNodeAttribute::eCamera)
+		{
+			lCameraPosition = globalPosition.GetT();
 
+			// By default, FBX cameras point towards the X positive axis.
+			FbxVector4 lXPositiveAxis(1.0, 0.0, 0.0);
+			lCameraDefaultDirection = lCameraPosition + lXPositiveAxis;
+
+			lCameraGlobalPosition = globalPosition;
+
+			// If the camera is linked to an interest, get the interest position.
+			if (node->GetTarget())
+			{
+				lCameraInterestPosition = parser->GetGlobalPosition(node->GetTarget(), currTime).GetT();
+
+				// Compute the required rotation to make the camera point to it's interest.
+				FbxVector4 lCameraDirection;
+				FbxVector4::AxisAlignmentInEulerAngle(lCameraPosition,
+					lCameraDefaultDirection,
+					lCameraInterestPosition,
+					lCameraDirection);
+
+				// Must override the camera rotation 
+				// to make it point to it's interest.
+				lCameraGlobalPosition.SetR(lCameraDirection);
+			}
+
+			// Get the camera roll.
+			FbxCamera* cam = node->GetCamera();
+			double lRoll = 0;
+
+			if (cam)
+			{
+				lRoll = cam->Roll.Get();
+				FbxAnimCurve* fc = cam->Roll.GetCurve(currAnimLayer);
+				if (fc) fc->Evaluate(currTime);
+			}
+
+			//draw camera
+			glColor3d(1.0, 1.0, 1.0);
+			glLineWidth(1.0);
+
+			glPushMatrix();
+			glMultMatrixd((double*)lCameraGlobalPosition);
+			glRotated(lRoll, 1.0, 0.0, 0.0);
+			glTranslatef(50, 150, 50);
+
+			int i;
+			float lCamera[10][2] = { { 0, 5.5 }, { -3, 4.5 },
+			{ -3, 7.5 }, { -6, 10.5 }, { -23, 10.5 },
+			{ -23, -4.5 }, { -20, -7.5 }, { -3, -7.5 },
+			{ -3, -4.5 }, { 0, -5.5 } };
+
+			glBegin(GL_LINE_LOOP);
+			{
+				for (i = 0; i < 10; i++)
+				{
+					glVertex3f(lCamera[i][0], lCamera[i][1], 4.5);
+				}
+			}
+			glEnd();
+
+			glBegin(GL_LINE_LOOP);
+			{
+				for (i = 0; i < 10; i++)
+				{
+					glVertex3f(lCamera[i][0], lCamera[i][1], -4.5);
+				}
+			}
+			glEnd();
+
+			for (i = 0; i < 10; i++)
+			{
+				glBegin(GL_LINES);
+				{
+					glVertex3f(lCamera[i][0], lCamera[i][1], -4.5);
+					glVertex3f(lCamera[i][0], lCamera[i][1], 4.5);
+				}
+				glEnd();
+			}
+
+			glPopMatrix();
+		}
+	}
+	int childCount = node->GetChildCount();
+	for (int i = 0; i != childCount; ++i)
+	{
+		DrawCamera(node->GetChild(i), currTime, currAnimLayer, lCameraGlobalPosition);
+	}
+}
+
+void DrawModel()
+{
 	glBindTexture(GL_TEXTURE_2D, textureArr[0]);
 
 	//Polygon Points, Normals and UVs
-	vector<FbxVector4> polygonPoints = parser->getPolygonPoints();
-	vector<FbxVector4> normals = parser->getNormals();
-	vector<FbxVector2> uvs = parser->getTextureUVs();
+	vector<FbxVector4> polygonPoints = parser->GetPolygonPoints();
+	vector<FbxVector4> normals = parser->GetNormals();
+	vector<FbxVector2> uvs = parser->GetTextureUVs();
 
 	int uvSize = uvs.size();
 	int polygonPointsIndex = 0;
 	int polygonIndex = 0;
-	while (polygonPointsIndex < polygonPoints.size()) {
-		int polygonSize = parser->getFbxMesh()->GetPolygonSize(polygonIndex++);
-		if (polygonSize == 3) {
-			glEnable(GL_NORMALIZE);	//normalize
-			//glColor3f(1.0f, 0.0f, 0.0f);
+	while (polygonPointsIndex < polygonPoints.size()) 
+	{
+		int polygonSize = parser->GetFbxMesh()->GetPolygonSize(polygonIndex++);
+		glEnable(GL_NORMALIZE);	//normalize
+		glColor3f(1.0f, 0.0f, 0.0f);
 
-			glBegin(GL_TRIANGLES);
-			if (uvs.size() > 0) {
-				glNormal3f(static_cast<float>(normals[polygonPointsIndex].mData[0]), static_cast<float>(normals[polygonPointsIndex].mData[1]), static_cast<float>(normals[polygonPointsIndex].mData[2]));
-				glTexCoord2f(static_cast<float>(uvs[polygonPointsIndex].mData[0]), static_cast<float>(uvs[polygonPointsIndex].mData[1]));
-			}
-			glVertex3f(polygonPoints[polygonPointsIndex].mData[0], polygonPoints[polygonPointsIndex].mData[1], polygonPoints[polygonPointsIndex].mData[2]);
-			polygonPointsIndex += 1;
-
-			if (uvs.size() > 0) {
-				glNormal3f(static_cast<float>(normals[polygonPointsIndex].mData[0]), static_cast<float>(normals[polygonPointsIndex].mData[1]), static_cast<float>(normals[polygonPointsIndex].mData[2]));
-				glTexCoord2f(static_cast<float>(uvs[polygonPointsIndex].mData[0]), static_cast<float>(uvs[polygonPointsIndex].mData[1]));
-			}
-			glVertex3f(polygonPoints[polygonPointsIndex].mData[0], polygonPoints[polygonPointsIndex].mData[1], polygonPoints[polygonPointsIndex].mData[2]);
-			polygonPointsIndex += 1;
-
-			if (uvs.size() > 0) {
-				glNormal3f(static_cast<float>(normals[polygonPointsIndex].mData[0]), static_cast<float>(normals[polygonPointsIndex].mData[1]), static_cast<float>(normals[polygonPointsIndex].mData[2]));
-				glTexCoord2f(static_cast<float>(uvs[polygonPointsIndex].mData[0]), static_cast<float>(uvs[polygonPointsIndex].mData[1]));
-			}
-			glVertex3f(polygonPoints[polygonPointsIndex].mData[0], polygonPoints[polygonPointsIndex].mData[1], polygonPoints[polygonPointsIndex].mData[2]);
-			polygonPointsIndex += 1;
-
-			glEnd();
+		glBegin(GL_TRIANGLES);
+		if (normals.size() > 0 && polygonPointsIndex < normals.size())
+		{
+			glNormal3f(static_cast<float>(normals[polygonPointsIndex].mData[0]), static_cast<float>(normals[polygonPointsIndex].mData[1]), static_cast<float>(normals[polygonPointsIndex].mData[2]));
 		}
-		else if (polygonSize == 4) {
-			glEnable(GL_NORMALIZE);	//normalize
-			//glColor3f(1.0f, 1.0f, 0.0f);
-
-			glBegin(GL_QUADS);
-			if (uvs.size() > 0) {
-				glNormal3f(static_cast<float>(normals[polygonPointsIndex].mData[0]), static_cast<float>(normals[polygonPointsIndex].mData[1]), static_cast<float>(normals[polygonPointsIndex].mData[2]));
-				glTexCoord2f(static_cast<float>(uvs[polygonPointsIndex].mData[0]), static_cast<float>(uvs[polygonPointsIndex].mData[1]));
-			}
-			glVertex3f(polygonPoints[polygonPointsIndex].mData[0], polygonPoints[polygonPointsIndex].mData[1], polygonPoints[polygonPointsIndex].mData[2]);
-			polygonPointsIndex += 1;
-
-			if (uvs.size() > 0) {
-				glNormal3f(static_cast<float>(normals[polygonPointsIndex].mData[0]), static_cast<float>(normals[polygonPointsIndex].mData[1]), static_cast<float>(normals[polygonPointsIndex].mData[2]));
-				glTexCoord2f(static_cast<float>(uvs[polygonPointsIndex].mData[0]), static_cast<float>(uvs[polygonPointsIndex].mData[1]));
-			}
-			glVertex3f(polygonPoints[polygonPointsIndex].mData[0], polygonPoints[polygonPointsIndex].mData[1], polygonPoints[polygonPointsIndex].mData[2]);
-			polygonPointsIndex += 1;
-
-			if (uvs.size() > 0) {
-				glNormal3f(static_cast<float>(normals[polygonPointsIndex].mData[0]), static_cast<float>(normals[polygonPointsIndex].mData[1]), static_cast<float>(normals[polygonPointsIndex].mData[2]));
-				glTexCoord2f(static_cast<float>(uvs[polygonPointsIndex].mData[0]), static_cast<float>(uvs[polygonPointsIndex].mData[1]));
-			}
-			glVertex3f(polygonPoints[polygonPointsIndex].mData[0], polygonPoints[polygonPointsIndex].mData[1], polygonPoints[polygonPointsIndex].mData[2]);
-			polygonPointsIndex += 1;
-
-			if (uvs.size() > 0) {
-				glNormal3f(static_cast<float>(normals[polygonPointsIndex].mData[0]), static_cast<float>(normals[polygonPointsIndex].mData[1]), static_cast<float>(normals[polygonPointsIndex].mData[2]));
-				glTexCoord2f(static_cast<float>(uvs[polygonPointsIndex].mData[0]), static_cast<float>(uvs[polygonPointsIndex].mData[1]));
-			}
-			glVertex3f(polygonPoints[polygonPointsIndex].mData[0], polygonPoints[polygonPointsIndex].mData[1], polygonPoints[polygonPointsIndex].mData[2]);
-			polygonPointsIndex += 1;
-
-			glEnd();
+		if (uvs.size() > 0 && polygonPointsIndex < uvs.size())
+		{
+			glTexCoord2f(static_cast<float>(uvs[polygonPointsIndex].mData[0]), static_cast<float>(uvs[polygonPointsIndex].mData[1]));
 		}
-		else {
-			FBXSDK_printf("undefined polygon size: %d\n", polygonSize);
+		glVertex3f(polygonPoints[polygonPointsIndex].mData[0], polygonPoints[polygonPointsIndex].mData[1], polygonPoints[polygonPointsIndex].mData[2]);
+		polygonPointsIndex += 1;
+
+		if (normals.size() > 0 && polygonPointsIndex < normals.size())
+		{
+			glNormal3f(static_cast<float>(normals[polygonPointsIndex].mData[0]), static_cast<float>(normals[polygonPointsIndex].mData[1]), static_cast<float>(normals[polygonPointsIndex].mData[2]));
 		}
+		if (uvs.size() > 0 && polygonPointsIndex < uvs.size())
+		{
+			glTexCoord2f(static_cast<float>(uvs[polygonPointsIndex].mData[0]), static_cast<float>(uvs[polygonPointsIndex].mData[1]));
+		}
+		glVertex3f(polygonPoints[polygonPointsIndex].mData[0], polygonPoints[polygonPointsIndex].mData[1], polygonPoints[polygonPointsIndex].mData[2]);
+		polygonPointsIndex += 1;
+
+		if (normals.size() > 0 && polygonPointsIndex < normals.size())
+		{
+			glNormal3f(static_cast<float>(normals[polygonPointsIndex].mData[0]), static_cast<float>(normals[polygonPointsIndex].mData[1]), static_cast<float>(normals[polygonPointsIndex].mData[2]));
+		}
+		if (uvs.size() > 0 && polygonPointsIndex < uvs.size())
+		{
+			glTexCoord2f(static_cast<float>(uvs[polygonPointsIndex].mData[0]), static_cast<float>(uvs[polygonPointsIndex].mData[1]));
+		}
+		glVertex3f(polygonPoints[polygonPointsIndex].mData[0], polygonPoints[polygonPointsIndex].mData[1], polygonPoints[polygonPointsIndex].mData[2]);
+		polygonPointsIndex += 1;
+
+		glEnd();
 	}
 }
 
-void ModelReconstruct::drawSkeleton(FbxNode *node, FbxTime currTime, FbxAnimLayer *currAnimLayer, FbxAMatrix &parentGlobalMatrix)
+void DrawSkeleton(FbxNode *node, FbxTime currTime, FbxAnimLayer *currAnimLayer, FbxAMatrix &parentGlobalMatrix)
 {
-	FbxAMatrix globalPosition = parser->getGlobalPosition(node, currTime, &parentGlobalMatrix);
+	FbxAMatrix globalPosition = parser->GetGlobalPosition(node, currTime, &parentGlobalMatrix);
 
-	if (node->GetNodeAttribute()) {
-		FbxAMatrix geometryOffset = parser->getGeometry(node);
+	if (node->GetNodeAttribute()) 
+	{
+		FbxAMatrix geometryOffset = parser->GetGeometry(node);
 		FbxAMatrix globalOffPosition = globalPosition * geometryOffset;
 
 		FbxSkeleton *skeleton = (FbxSkeleton*)node->GetNodeAttribute();
@@ -257,13 +337,14 @@ void ModelReconstruct::drawSkeleton(FbxNode *node, FbxTime currTime, FbxAnimLaye
 
 		if (skeleton->GetSkeletonType() == FbxSkeleton::eLimbNode &&
 			node->GetParent() && node->GetParent()->GetNodeAttribute() &&
-			node->GetParent()->GetNodeAttribute()->GetAttributeType() == FbxNodeAttribute::eSkeleton) {
+			node->GetParent()->GetNodeAttribute()->GetAttributeType() == FbxNodeAttribute::eSkeleton) 
+		{
 			
 			glPushMatrix();
 
 			glDisable(GL_LIGHTING);	//disabled light before draw lines to make the color of grid works
 			glDisable(GL_TEXTURE_2D);
-			glRotatef(90, 1.0, 0.0, 0.0);
+			//glRotatef(90, 1.0, 0.0, 0.0);
 			glColor3f(1.0, 0.0, 0.0);
 			glLineWidth(2.0);
 
@@ -281,136 +362,169 @@ void ModelReconstruct::drawSkeleton(FbxNode *node, FbxTime currTime, FbxAnimLaye
 		}
 	}
 	const int childCount = node->GetChildCount();
-	for (int i = 0; i != childCount; ++i) {
-		drawSkeleton(node->GetChild(i), currTime, currAnimLayer, globalPosition);
+	for (int i = 0; i != childCount; ++i) 
+	{
+		DrawSkeleton(node->GetChild(i), currTime, currAnimLayer, globalPosition);
 	}
 }
 
-void ModelReconstruct::drawMesh(FbxNode *node, FbxTime currTime, FbxAnimLayer *animLayer, FbxAMatrix &parentGlobalPosition)
+void DrawMesh(FbxNode *node, FbxTime currTime, FbxAnimLayer *animLayer, FbxAMatrix &globalPosition, ShadingMode shadingMode, int meshCount)
 {
-	FbxAMatrix globalPosition = parser->getGlobalPosition(node, currTime, &parentGlobalPosition);
-	FbxAMatrix geometryOffset;
-	FbxAMatrix globalOffPosition;
-	
-	if (node->GetNodeAttribute() && node->GetNodeAttribute()->GetAttributeType() == FbxNodeAttribute::eMesh) {
-		geometryOffset = parser->getGeometry(node);
-		globalOffPosition = globalPosition * geometryOffset;
+	if (node->GetNodeAttribute() && node->GetNodeAttribute()->GetAttributeType() == FbxNodeAttribute::eMesh)
+	{
+		//if (meshCount <= 30)
+		//{
+		//	FbxVector4 lT = node->LclTranslation.Get();
+		//	FbxVector4 lR = node->LclRotation.Get();
+		//	glTranslatef(lT[0] / 100, lT[1] / 100, lT[2] / 100);
+		//	glRotatef(lR[0], 1, 0, 0);
+		//	glRotatef(lR[1], 0, 1, 0);
+		//	glRotatef(lR[0], 0, 0, 1);
+		//}
+		//else
+		//	return;
 
-		FbxMesh *mesh = (FbxMesh*)node->GetNodeAttribute();
-		const int vertexCount = mesh->GetControlPointsCount();
-		if (vertexCount == 0)
+		FbxMesh* lMesh = (FbxMesh*)node->GetNodeAttribute();
+		//FBXSDK_printf("mesh %d: %s\n", meshCount, lMesh->GetName());
+
+
+
+		const int lVertexCount = lMesh->GetControlPointsCount();
+		//FBXSDK_printf("lVertexCount in draw mesh function: %d		mesh name: %s\n", lVertexCount, lMesh->GetName());
+		// No vertex to draw.
+		if (lVertexCount == 0)
+		{
 			return;
-
-		const VBOMesh *meshCache = static_cast<const VBOMesh*>(mesh->GetUserDataPtr());
-
-		const bool hasVertexCache = mesh->GetDeformerCount(FbxDeformer::eVertexCache) &&
-			(static_cast<FbxVertexCacheDeformer*>(mesh->GetDeformer(0, FbxDeformer::eVertexCache))->Active.Get());
-		const bool hasShape = mesh->GetShapeCount() > 0;
-		const bool hasSkin = mesh->GetDeformerCount(FbxDeformer::eSkin) > 0;
-		const bool hasDeformer = hasVertexCache || hasSkin || hasShape;
-
-		FbxVector4 *vertexArray = nullptr;
-		if (!meshCache || hasDeformer) {
-			vertexArray = new FbxVector4[vertexCount];
-			memcpy(vertexArray, mesh->GetControlPoints(), vertexCount * sizeof(FbxVector4));
 		}
 
-		if (hasDeformer) {
-			if (hasVertexCache) {
-				meshCache->ReadVertexCacheData(mesh, currTime, vertexArray);
+		const VBOMesh * lMeshCache = static_cast<const VBOMesh *>(lMesh->GetUserDataPtr());
+
+		// If it has some defomer connection, update the vertices position
+		const bool lHasVertexCache = lMesh->GetDeformerCount(FbxDeformer::eVertexCache) &&
+			(static_cast<FbxVertexCacheDeformer*>(lMesh->GetDeformer(0, FbxDeformer::eVertexCache)))->Active.Get();
+		const bool lHasShape = lMesh->GetShapeCount() > 0;
+		const bool lHasSkin = lMesh->GetDeformerCount(FbxDeformer::eSkin) > 0;
+		const bool lHasDeformation = lHasVertexCache || lHasShape || lHasSkin;
+
+		FbxVector4* lVertexArray = NULL;
+		lVertexArray = new FbxVector4[lVertexCount];
+		memcpy(lVertexArray, lMesh->GetControlPoints(), lVertexCount * sizeof(FbxVector4));
+
+		if (lHasDeformation)
+		{
+			// Active vertex cache deformer will overwrite any other deformer
+			if (lHasVertexCache)	//false, jump to else
+			{
+				//do nothing since we dont need vertex cache
 			}
-			else {
-				if (hasShape) {
-					// compute the vertex array with the shapes
-					computeShapeDeformation(mesh, currTime, animLayer, vertexArray);
+			else
+			{
+				if (lHasShape)	//true
+				{
+					ComputeShapeDeformation(lMesh, currTime, animLayer, lVertexArray);
 				}
 
-				//get the number of clusters
-				const int skinCount = mesh->GetDeformerCount(FbxDeformer::eSkin);
-				int clusterCount = 0;
-				for (int skinIndex = 0; skinIndex != skinCount; ++skinIndex) {
-					clusterCount += ((FbxSkin*)mesh->GetDeformer(skinIndex, FbxDeformer::eSkin))->GetClusterCount();
+				//get number of joints
+				const int lSkinCount = lMesh->GetDeformerCount(FbxDeformer::eSkin);
+				int lClusterCount = 0;
+				for (int lSkinIndex = 0; lSkinIndex < lSkinCount; ++lSkinIndex)
+				{
+					lClusterCount += ((FbxSkin *)(lMesh->GetDeformer(lSkinIndex, FbxDeformer::eSkin)))->GetClusterCount();
 				}
-				if (clusterCount) {
-					FbxPose *pose = nullptr;
-					computeSkinDeformation(mesh, globalOffPosition, currTime, vertexArray, pose);
+				if (lClusterCount)
+				{
+					FbxPose *pose = NULL;
+					ComputeSkinDeformation(lMesh, globalPosition, currTime, lVertexArray, pose);
 				}
 			}
 
-			if (meshCache) {
-				meshCache->UpdateVertexPosition(mesh, vertexArray);
-			}
+			if (lMeshCache)
+				lMeshCache->UpdateVertexPosition(lMesh, lVertexArray);
 		}
-
 
 		glPushMatrix();
-		glMultMatrixd((const double*)globalOffPosition);
+		glMultMatrixd((const double*)globalPosition);
 
-		if (meshCache) {
-			meshCache->BeginDraw();
-			const int subMeshCount = meshCache->GetSubMeshCount();
-
-			for (int i = 0; i != subMeshCount; ++i) {
-				const FbxSurfaceMaterial *material = node->GetMaterial(i);
-				if (material) {
-					const MaterialCache *materialCache = static_cast<MaterialCache*>(mesh->GetUserDataPtr());
-					if (materialCache) {
-						materialCache->SetCurrentMaterial();
+		//DrawModel();
+		/* OpenGL driver is too lower and use Immediate Mode
+		FBXSDK_printf("called\n");*/
+		if (lMeshCache)
+		{
+			lMeshCache->BeginDraw(shadingMode);
+			const int lSubMeshCount = lMeshCache->GetSubMeshCount();
+			for (int lIndex = 0; lIndex < lSubMeshCount; ++lIndex)
+			{
+				if (shadingMode == SHADING_MODE_SHADED)
+				{
+					const FbxSurfaceMaterial * lMaterial = node->GetMaterial(lIndex);
+					if (lMaterial)
+					{
+						const MaterialCache * lMaterialCache = static_cast<const MaterialCache *>(lMaterial->GetUserDataPtr());
+						if (lMaterialCache)
+						{
+							lMaterialCache->SetCurrentMaterial();
+						}
+					}
+					else
+					{
+						// Draw green for faces without material
+						MaterialCache::SetDefaultMaterial();
 					}
 				}
-				else {
 
-					//draw green for faces without material
-					MaterialCache::SetDefaultMaterial();
-				}
-				meshCache->Draw(i);
+				lMeshCache->Draw(lIndex, shadingMode);
 			}
-			meshCache->EndDraw();
+			lMeshCache->EndDraw();
+			//glPopMatrix();
 		}
-		else {
-			glColor4f(0.0, 0.0, 1.0, 1.0);
-			const int polygonCount = mesh->GetPolygonCount();
-			for (int polygonIndex = 0; polygonIndex != polygonCount; ++polygonIndex) {
-				const int polygonSize = mesh->GetPolygonSize(polygonIndex);
+		else
+		{
+			glBindTexture(GL_TEXTURE_2D, textureArr[0]);
 
-				glRotatef(90, 1.0, 0.0, 0.0);
-				glBegin(GL_LINE_LOOP);
-				for (int vertexIndex = 0; vertexIndex != vertexCount; ++vertexIndex) {
-					glVertex3dv((const double*)vertexArray[mesh->GetPolygonVertex(polygonIndex, vertexIndex)]);
+			vector<FbxVector4> normals = parser->GetNormals();
+			vector<FbxVector2> uvs = parser->GetTextureUVs();
+
+			int lNormalsSize = normals.size();
+			int lUVsSize = uvs.size();
+
+			//glColor4f(0.5f, 1.0f, 0.5f, 1.0f);
+			const int lPolygonCount = lMesh->GetPolygonCount();
+			for (int lPolygonIndex = 0; lPolygonIndex < lPolygonCount; lPolygonIndex++)
+			{
+				const int lVerticeCount = lMesh->GetPolygonSize(lPolygonIndex);
+				glEnable(GL_NORMALIZE);
+				glBegin(GL_TRIANGLES);
+				for (int lVerticeIndex = 0; lVerticeIndex < lVerticeCount; lVerticeIndex++)
+				{
+					int index = lMesh->GetPolygonVertex(lPolygonIndex, lVerticeIndex);
+					if (lNormalsSize > 0 && lNormalsSize < lPolygonCount)
+					{
+						glNormal3dv((GLdouble*)normals[lPolygonIndex * 3 + lVerticeIndex]);
+					}
+					if (lUVsSize > 0 && lUVsSize < lPolygonCount)
+					{
+						glTexCoord2dv((GLdouble*)uvs[lPolygonIndex * 3 + lVerticeIndex]);
+					}
+					glVertex3dv((GLdouble *)lVertexArray[index]);
 				}
 				glEnd();
-
 			}
-
 		}
 		glPopMatrix();
-		delete[] vertexArray;
+		delete[] lVertexArray;
 	}
 
 	int childCount = node->GetChildCount();
-	for (int i = 0; i != childCount; ++i) {
-		drawMesh(node->GetChild(i), currTime, animLayer, globalOffPosition);
+	for (int i = 0; i != childCount; ++i) 
+	{
+		DrawMesh(node->GetChild(i), currTime, animLayer, globalPosition, shadingMode, ++meshCount);
 	}
 }
 
-void ModelReconstruct::computePos(GLfloat deltaMove)
+void DrawGrid(const FbxAMatrix & pTransform)
 {
-	cameraPosX += deltaMove * cameraRotX * 0.1f;
-	cameraPosY += deltaMove * cameraRotY * 0.1f;
-}
-
-void ModelReconstruct::displayModel()
-{
-	currModelRec = this;
-	glutDisplayFunc(::displayCallBack);
-	
-}
-
-void ModelReconstruct::drawGrid(const FbxAMatrix & pTransform)
-{
-	
-
-	glPushMatrix();
+	glRotatef(90, 1.0, 0.0, 0.0);
+	//glPushMatrix();
 	glMultMatrixd(pTransform);
 
 	// Draw a grid 500*500
@@ -428,15 +542,19 @@ void ModelReconstruct::drawGrid(const FbxAMatrix & pTransform)
 	int i;
 
 	// Draw Grid
-	for (i = -hw; i <= hw; i += step) {
+	for (i = -hw; i <= hw; i += step) 
+	{
 
-		if (i % bigstep == 0) {
+		if (i % bigstep == 0) 
+		{
 			glLineWidth(2.0);
 		}
-		else {
+		else 
+		{
 			glLineWidth(1.0);
 		}
-		if (i == 0) {
+		if (i == 0) 
+		{
 			glColor3f(1.0f, 0.0f, 0.0f);
 			glBegin(GL_LINES);
 			glVertex3i(i, -hw, 0);
@@ -449,7 +567,8 @@ void ModelReconstruct::drawGrid(const FbxAMatrix & pTransform)
 			glVertex3i(hw, i, 0);
 			glEnd();
 		}
-		else {
+		else 
+		{
 			glColor3f(0.3f, 0.3f, 0.3f);
 			glBegin(GL_LINES);
 			glVertex3i(i, -hw, 0);
@@ -465,31 +584,32 @@ void ModelReconstruct::drawGrid(const FbxAMatrix & pTransform)
 	}
 	glEnable(GL_LIGHTING);
 	glEnable(GL_TEXTURE_2D);
-	glPopMatrix();
+	//glPopMatrix();
 }
 
 
-void ModelReconstruct::computeShapeDeformation(FbxMesh *mesh, FbxTime &currTime, FbxAnimLayer *animLayer, FbxVector4 *vertexArray)
+void ComputeShapeDeformation(FbxMesh *pMesh, FbxTime &currTime, FbxAnimLayer *pAnimLayer, FbxVector4 *pVertexArray)
 {
-	int lVertexCount = mesh->GetControlPointsCount();
+	int lVertexCount = pMesh->GetControlPointsCount();
 
-	FbxVector4* lSrcVertexArray = vertexArray;
+	FbxVector4* lSrcVertexArray = pVertexArray;
 	FbxVector4* lDstVertexArray = new FbxVector4[lVertexCount];
-	memcpy(lDstVertexArray, vertexArray, lVertexCount * sizeof(FbxVector4));
+	memcpy(lDstVertexArray, pVertexArray, lVertexCount * sizeof(FbxVector4));
 
-	int lBlendShapeDeformerCount = mesh->GetDeformerCount(FbxDeformer::eBlendShape);
+	int lBlendShapeDeformerCount = pMesh->GetDeformerCount(FbxDeformer::eBlendShape);
 	for (int lBlendShapeIndex = 0; lBlendShapeIndex<lBlendShapeDeformerCount; ++lBlendShapeIndex)
 	{
-		FbxBlendShape* lBlendShape = (FbxBlendShape*)mesh->GetDeformer(lBlendShapeIndex, FbxDeformer::eBlendShape);
+		FbxBlendShape* lBlendShape = (FbxBlendShape*)pMesh->GetDeformer(lBlendShapeIndex, FbxDeformer::eBlendShape);
 
 		int lBlendShapeChannelCount = lBlendShape->GetBlendShapeChannelCount();
 		for (int lChannelIndex = 0; lChannelIndex<lBlendShapeChannelCount; ++lChannelIndex)
 		{
 			FbxBlendShapeChannel* lChannel = lBlendShape->GetBlendShapeChannel(lChannelIndex);
-			if (lChannel)
+			if (lChannel)	//true
 			{
+				//FBXSDK_printf("lChannel is not NULL\n");
 				// Get the percentage of influence on this channel.
-				FbxAnimCurve* lFCurve = mesh->GetShapeChannel(lBlendShapeIndex, lChannelIndex, animLayer);
+				FbxAnimCurve* lFCurve = pMesh->GetShapeChannel(lBlendShapeIndex, lChannelIndex, pAnimLayer);
 				if (!lFCurve) continue;
 				double lWeight = lFCurve->Evaluate(currTime);
 
@@ -526,6 +646,8 @@ void ModelReconstruct::computeShapeDeformation(FbxMesh *mesh, FbxTime &currTime,
 				// Consider index of base geometry as -1.
 
 				int lShapeCount = lChannel->GetTargetShapeCount();
+				//FBXSDK_printf("lShapeCount: %d\n", lShapeCount);
+				
 				double* lFullWeights = lChannel->GetTargetShapeFullWeights();
 
 				// Find out which scope the lWeight falls in.
@@ -575,6 +697,7 @@ void ModelReconstruct::computeShapeDeformation(FbxMesh *mesh, FbxTime &currTime,
 				//The weight percentage falls between two target shapes.
 				else if (lStartShape && lEndShape)
 				{
+					//FBXSDK_printf("update vertex\n");
 					double lStartWeight = lFullWeights[lStartIndex];
 					double lEndWeight = lFullWeights[lEndIndex];
 					// Calculate the real weight.
@@ -592,23 +715,23 @@ void ModelReconstruct::computeShapeDeformation(FbxMesh *mesh, FbxTime &currTime,
 		}//For each blend shape channel
 	}//For each blend shape deformer
 
-	memcpy(vertexArray, lDstVertexArray, lVertexCount * sizeof(FbxVector4));
+	memcpy(pVertexArray, lDstVertexArray, lVertexCount * sizeof(FbxVector4));
 
 	delete[] lDstVertexArray;
 }
 
-void ModelReconstruct::computeSkinDeformation(FbxMesh *mesh, FbxAMatrix &globalPosition, FbxTime &currTime, FbxVector4 *vertexArray, FbxPose *pose)
+void ComputeSkinDeformation(FbxMesh *mesh, FbxAMatrix &globalPosition, FbxTime &currTime, FbxVector4 *vertexArray, FbxPose *pose)
 {
 	FbxSkin * lSkinDeformer = (FbxSkin *)mesh->GetDeformer(0, FbxDeformer::eSkin);
 	FbxSkin::EType lSkinningType = lSkinDeformer->GetSkinningType();
 
 	if (lSkinningType == FbxSkin::eLinear || lSkinningType == FbxSkin::eRigid)
 	{
-		computeLinearDeformation(mesh, globalPosition, currTime, vertexArray, pose);
+		ComputeLinearDeformation(mesh, globalPosition, currTime, vertexArray, pose);
 	}
 	else if (lSkinningType == FbxSkin::eDualQuaternion)
 	{
-		computeDualQuaternionDeformation(mesh, globalPosition, currTime, vertexArray, pose);
+		ComputeDualQuaternionDeformation(mesh, globalPosition, currTime, vertexArray, pose);
 	}
 	else if (lSkinningType == FbxSkin::eBlend)
 	{
@@ -620,8 +743,8 @@ void ModelReconstruct::computeSkinDeformation(FbxMesh *mesh, FbxAMatrix &globalP
 		FbxVector4* lVertexArrayDQ = new FbxVector4[lVertexCount];
 		memcpy(lVertexArrayDQ, mesh->GetControlPoints(), lVertexCount * sizeof(FbxVector4));
 
-		computeLinearDeformation(mesh, globalPosition, currTime, lVertexArrayLinear, pose);
-		computeDualQuaternionDeformation(mesh, globalPosition, currTime, lVertexArrayDQ, pose);
+		ComputeLinearDeformation(mesh, globalPosition, currTime, lVertexArrayLinear, pose);
+		ComputeDualQuaternionDeformation(mesh, globalPosition, currTime, lVertexArrayDQ, pose);
 
 		// To blend the skinning according to the blend weights
 		// Final vertex = DQSVertex * blend weight + LinearVertex * (1- blend weight)
@@ -636,117 +759,117 @@ void ModelReconstruct::computeSkinDeformation(FbxMesh *mesh, FbxAMatrix &globalP
 	}
 }
 
-void ModelReconstruct::computeLinearDeformation(FbxMesh *mesh, FbxAMatrix &globalPosition, FbxTime &currTime, FbxVector4 *vertexArray, FbxPose *pose)
+void ComputeLinearDeformation(FbxMesh *pMesh, FbxAMatrix &pGlobalPosition, FbxTime &currTime, FbxVector4 *pVertexArray, FbxPose *pPose)
 {
-	//all the links must have the same link node
-	FbxCluster::ELinkMode clusterMode = ((FbxSkin*)mesh->GetDeformer(0, FbxDeformer::eSkin))->GetCluster(0)->GetLinkMode();
+	// All the links must have the same link mode.
+	FbxCluster::ELinkMode lClusterMode = ((FbxSkin*)pMesh->GetDeformer(0, FbxDeformer::eSkin))->GetCluster(0)->GetLinkMode();
 
-	int vertexCount = mesh->GetControlPointsCount();
-	FbxAMatrix *clusterDeformation = new FbxAMatrix[vertexCount];
-	memset(clusterDeformation, 0, vertexCount * sizeof(FbxAMatrix));
+	int lVertexCount = pMesh->GetControlPointsCount();
+	FbxAMatrix* lClusterDeformation = new FbxAMatrix[lVertexCount];
+	memset(lClusterDeformation, 0, lVertexCount * sizeof(FbxAMatrix));
 
-	double *clusterWeight = new double[vertexCount];
-	memset(clusterWeight, 0, vertexCount * sizeof(double));
+	double* lClusterWeight = new double[lVertexCount];
+	memset(lClusterWeight, 0, lVertexCount * sizeof(double));
 
-	if (clusterMode == FbxCluster::eAdditive) {
-		for (int i = 0; i != vertexCount; ++i) {
-			clusterDeformation[i].SetIdentity();
+	if (lClusterMode == FbxCluster::eAdditive)
+	{
+		for (int i = 0; i < lVertexCount; ++i)
+		{
+			lClusterDeformation[i].SetIdentity();
 		}
 	}
 
-	//for all skins and all clusters, accumulate their deformation and weight
-	//on each vertices and store them in clusterDeformation and clusterWeight
-	int skinCount = mesh->GetDeformerCount(FbxDeformer::eSkin);
-	for (int skinIndex = 0; skinIndex != skinCount; ++skinIndex) {
-		FbxSkin *skinDeformer = (FbxSkin*)mesh->GetDeformer(skinIndex, FbxDeformer::eSkin);
+	// For all skins and all clusters, accumulate their deformation and weight
+	// on each vertices and store them in lClusterDeformation and lClusterWeight.
+	int lSkinCount = pMesh->GetDeformerCount(FbxDeformer::eSkin);
+	for (int lSkinIndex = 0; lSkinIndex<lSkinCount; ++lSkinIndex)
+	{
+		FbxSkin * lSkinDeformer = (FbxSkin *)pMesh->GetDeformer(lSkinIndex, FbxDeformer::eSkin);
 
-		int clusterCount = skinDeformer->GetClusterCount();
-		for (int clusterIndex = 0; clusterIndex != clusterCount; ++clusterIndex) {
-			FbxCluster *cluster = skinDeformer->GetCluster(clusterIndex);
-			if (!cluster->GetLink())
-				return;
-			FbxAMatrix vertexTransformMatrix;
-			computeClusterDeformation(mesh, globalPosition, cluster, vertexTransformMatrix, currTime, pose);
-			
-			int vertexIndexCount = cluster->GetControlPointIndicesCount();
-			for (int vertexIndex = 0; vertexIndex != vertexIndexCount; ++vertexIndex) {
-				int index = cluster->GetControlPointIndices()[vertexIndex];
-				if (index >= vertexIndexCount)
+		int lClusterCount = lSkinDeformer->GetClusterCount();
+		for (int lClusterIndex = 0; lClusterIndex<lClusterCount; ++lClusterIndex)
+		{
+			FbxCluster* lCluster = lSkinDeformer->GetCluster(lClusterIndex);
+			if (!lCluster->GetLink())
+				continue;
+
+			FbxAMatrix lVertexTransformMatrix;
+			ComputeClusterDeformation(pMesh, pGlobalPosition, lCluster, lVertexTransformMatrix, currTime, pPose);
+
+			int lVertexIndexCount = lCluster->GetControlPointIndicesCount();
+			for (int k = 0; k < lVertexIndexCount; ++k)
+			{
+				int lIndex = lCluster->GetControlPointIndices()[k];
+
+				// Sometimes, the mesh can have less points than at the time of the skinning
+				// because a smooth operator was active when skinning but has been deactivated during export.
+				if (lIndex >= lVertexCount)
 					continue;
 
-				double weight = cluster->GetControlPointWeights()[index];
-				if (weight == 0)
-					continue;
+				double lWeight = lCluster->GetControlPointWeights()[k];
 
-				//compute the influence of the link on the vertex
-				FbxAMatrix influence = vertexTransformMatrix;
-				matrixScale(influence, weight);
-
-				if (clusterMode == FbxCluster::eAdditive) {
-					matrixAddToDiagonal(influence, 1 - weight);
-
-					clusterDeformation[index] = influence * clusterDeformation[index];
-					clusterWeight[index] = 1.0;
-				}
-				else
+				if (lWeight == 0.0)
 				{
-					matrixAdd(clusterDeformation[index], influence);
-					clusterWeight[index] += weight;
-
+					continue;
 				}
-			}
-		}
 
+				// Compute the influence of the link on the vertex.
+				FbxAMatrix lInfluence = lVertexTransformMatrix;
+				MatrixScale(lInfluence, lWeight);
+
+				if (lClusterMode == FbxCluster::eAdditive)
+				{
+					// Multiply with the product of the deformations on the vertex.
+					MatrixAddToDiagonal(lInfluence, 1.0 - lWeight);
+					lClusterDeformation[lIndex] = lInfluence * lClusterDeformation[lIndex];
+
+					// Set the link to 1.0 just to know this vertex is influenced by a link.
+					lClusterWeight[lIndex] = 1.0;
+				}
+				else // lLinkMode == FbxCluster::eNormalize || lLinkMode == FbxCluster::eTotalOne
+				{
+					// Add to the sum of the deformations on the vertex.
+					MatrixAdd(lClusterDeformation[lIndex], lInfluence);
+
+					// Add to the sum of weights to either normalize or complete the vertex.
+					lClusterWeight[lIndex] += lWeight;
+				}
+			}//For each vertex			
+		}//lClusterCount
 	}
 
-	//actually deform each vertex here by information stored in clusterDeformation and clustreWeight
-	for (int i = 0; i != vertexCount; ++i) {
-		FbxVector4 srcVertex = vertexArray[i];
-		FbxVector4 &desVertex = vertexArray[i];
-		double weight = clusterWeight[i];
+	//Actually deform each vertices here by information stored in lClusterDeformation and lClusterWeight
+	//FBXSDK_printf("vertex count: %d\n", lVertexCount);
+	for (int i = 0; i < lVertexCount; i++)
+	{
+		FbxVector4 lSrcVertex = pVertexArray[i];
+		FbxVector4& lDstVertex = pVertexArray[i];
+		double lWeight = lClusterWeight[i];
 
-		//deform the vertex id there is at least one link with an influence on the vertex
-		if (weight != 0.0) {
-			desVertex = clusterDeformation[i].MultT(srcVertex);
-			if (clusterMode == FbxCluster::eNormalize) { 
-				desVertex /= weight;
+		// Deform the vertex if there was at least a link with an influence on the vertex,
+		if (lWeight != 0.0)
+		{
+			lDstVertex = lClusterDeformation[i].MultT(lSrcVertex);
+			if (lClusterMode == FbxCluster::eNormalize)
+			{
+				// In the normalized link mode, a vertex is always totally influenced by the links. 
+				lDstVertex /= lWeight;
 			}
-			else if (clusterMode == FbxCluster::eTotalOne) {
-				srcVertex *= (1.0 - weight);
-				desVertex += srcVertex;
+			else if (lClusterMode == FbxCluster::eTotalOne)
+			{
+				// In the total 1 link mode, a vertex can be partially influenced by the links. 
+				lSrcVertex *= (1.0 - lWeight);
+				lDstVertex += lSrcVertex;
 			}
 		}
-	
 	}
-	delete[] clusterDeformation;
-	delete[] clusterWeight;
+
+	delete[] lClusterDeformation;
+	delete[] lClusterWeight;
 
 }
 
-void ModelReconstruct::matrixAdd(FbxAMatrix &desMat, const FbxAMatrix &srcMat)
-{
-	for (int i = 0; i != 4; ++i)
-		for (int j = 0; j != 4; ++j)
-			desMat[i][j] += srcMat[i][j];
-}
-
-void ModelReconstruct::matrixScale(FbxAMatrix &influence, double weight)
-{
-	for (int i = 0; i != 4; ++i)
-		for (int j = 0; j != 4; ++j)
-			influence[i][j] *= weight;
-}
-
-void ModelReconstruct::matrixAddToDiagonal(FbxAMatrix &influence, double value)
-{
-	for (int i = 0; i != 4; ++i)
-		for (int j = 0; j != 4; ++j)
-			if (i == j)
-				influence[i][j] += value;
-}
-
-
-void ModelReconstruct::computeDualQuaternionDeformation(FbxMesh *mesh, FbxAMatrix &globalPosition, FbxTime &currTime, FbxVector4 *vertexArray, FbxPose *pose)
+void ComputeDualQuaternionDeformation(FbxMesh *mesh, FbxAMatrix &globalPosition, FbxTime &currTime, FbxVector4 *vertexArray, FbxPose *pose)
 {
 	//all the links must have the same link mode
 	FbxCluster::ELinkMode clusterMode = ((FbxSkin*)mesh->GetDeformer(0, FbxDeformer::eSkin))->GetCluster(0)->GetLinkMode();
@@ -762,16 +885,18 @@ void ModelReconstruct::computeDualQuaternionDeformation(FbxMesh *mesh, FbxAMatri
 
 	//for all skins and all clusters, accumulate their deformation and weights
 	//on each vertices and store them in clusterDeformation and clusterWeight
-	for (int skinIndex = 0; skinIndex != skinCount; ++skinIndex) {
+	for (int skinIndex = 0; skinIndex != skinCount; ++skinIndex) 
+	{
 		FbxSkin *skinDeformer = (FbxSkin*)mesh->GetDeformer(skinIndex, FbxDeformer::eSkin);
 		int clusterCount = skinDeformer->GetClusterCount();
 
-		for (int clusterIndex = 0; clusterIndex != clusterCount; ++clusterIndex) {
+		for (int clusterIndex = 0; clusterIndex != clusterCount; ++clusterIndex) 
+		{
 			FbxCluster *cluster = skinDeformer->GetCluster(clusterIndex);
 			if (!cluster->GetLink())
 				continue;
 			FbxAMatrix vertexTransformMatrix;
-			computeClusterDeformation(mesh, globalPosition, cluster, vertexTransformMatrix, currTime, pose);
+			ComputeClusterDeformation(mesh, globalPosition, cluster, vertexTransformMatrix, currTime, pose);
 
 			FbxQuaternion lQ = vertexTransformMatrix.GetQ();
 			FbxVector4 lT = vertexTransformMatrix.GetT();
@@ -779,7 +904,8 @@ void ModelReconstruct::computeDualQuaternionDeformation(FbxMesh *mesh, FbxAMatri
 			FbxDualQuaternion dualQuaternion(lQ, lT);
 
 			int vertexIndexCount = cluster->GetControlPointIndicesCount();
-			for (int vertexIndex = 0; vertexIndex != vertexIndexCount; ++vertexIndex) {
+			for (int vertexIndex = 0; vertexIndex != vertexIndexCount; ++vertexIndex) 
+			{
 				int index = cluster->GetControlPointIndices()[vertexIndex];
 
 				if (index >= vertexIndexCount)
@@ -792,25 +918,31 @@ void ModelReconstruct::computeDualQuaternionDeformation(FbxMesh *mesh, FbxAMatri
 				
 				//compute the influence of the link on the vertex
 				FbxDualQuaternion influence = dualQuaternion * weight;
-				if (clusterMode == FbxCluster::eAdditive) {
+				if (clusterMode == FbxCluster::eAdditive) 
+				{
 					//simply influenced by the dual quaternion
 					DQClusterDeformation[index] = influence;
 					clusterWeight[index] = 1.0;
 
 				}
-				else {
-					if (clusterIndex == 0) {
+				else 
+				{
+					if (clusterIndex == 0) 
+					{
 						DQClusterDeformation[index] = influence;
 					}
-					else {
+					else 
+					{
 						//add to the sum of the deformations on the vertex
 						//make sure the deformation is accumulated in the same direction
 						//use the Dot Product to judge the sign
 						double sign = DQClusterDeformation[index].GetFirstQuaternion().DotProduct(dualQuaternion.GetFirstQuaternion());
-						if (sign >= 0.0) {
+						if (sign >= 0.0) 
+						{
 							DQClusterDeformation[index] += influence;
 						}
-						else {
+						else 
+						{
 							DQClusterDeformation[index] += influence;
 						}
 					}
@@ -821,20 +953,24 @@ void ModelReconstruct::computeDualQuaternionDeformation(FbxMesh *mesh, FbxAMatri
 	}
 
 	//actually deform each vertex here by information sroted in clusterDeformation and clusterWeight
-	for (int i = 0; i != vertexCount; ++i) {
+	for (int i = 0; i != vertexCount; ++i) 
+	{
 		FbxVector4 srcVertex = vertexArray[i];
 		FbxVector4 &desVertex = vertexArray[i];
 		double weightSum = clusterWeight[i];
 
 		//deform the vertex if there is at least one link with an influence on the vertex
-		if (weightSum != 0.0) {
+		if (weightSum != 0.0) 
+		{
 			DQClusterDeformation[i].Normalize();
 			desVertex = DQClusterDeformation[i].Deform(desVertex);
 
-			if (clusterMode == FbxCluster::eAdditive) {
+			if (clusterMode == FbxCluster::eAdditive) 
+			{
 				desVertex /= weightSum;
 			}
-			else if (clusterMode == FbxCluster::eTotalOne) {
+			else if (clusterMode == FbxCluster::eTotalOne) 
+			{
 				srcVertex *= (1 - weightSum);
 				desVertex += srcVertex;
 			}
@@ -844,7 +980,7 @@ void ModelReconstruct::computeDualQuaternionDeformation(FbxMesh *mesh, FbxAMatri
 	delete[] clusterWeight;
 }
 
-void ModelReconstruct::computeClusterDeformation(FbxMesh *mesh, FbxAMatrix &globalPosition, FbxCluster *cluster, FbxAMatrix &vertexTransformMatrix, FbxTime &currTime, FbxPose *pose)
+void ComputeClusterDeformation(FbxMesh *mesh, FbxAMatrix &globalPosition, FbxCluster *cluster, FbxAMatrix &vertexTransformMatrix, FbxTime &currTime, FbxPose *pose)
 {
 	FbxCluster::ELinkMode clusterMode = cluster->GetLinkMode();
 	FbxAMatrix lReferenceGlobalInitPosition;
@@ -867,22 +1003,22 @@ void ModelReconstruct::computeClusterDeformation(FbxMesh *mesh, FbxAMatrix &glob
 	{
 		cluster->GetTransformAssociateModelMatrix(lAssociateGlobalInitPosition);
 		// Geometric transform of the model
-		lAssociateGeometry = parser->getGeometry(cluster->GetAssociateModel());
+		lAssociateGeometry = parser->GetGeometry(cluster->GetAssociateModel());
 		lAssociateGlobalInitPosition *= lAssociateGeometry;
-		lAssociateGlobalCurrentPosition = parser->getGlobalPosition(cluster->GetAssociateModel(), currTime, &lParentGlobalMatrix);
+		lAssociateGlobalCurrentPosition = parser->GetGlobalPosition(cluster->GetAssociateModel(), currTime, &lParentGlobalMatrix);
 
 		cluster->GetTransformMatrix(lReferenceGlobalInitPosition);
 		// Multiply lReferenceGlobalInitPosition by Geometric Transformation
-		lReferenceGeometry = parser->getGeometry(mesh->GetNode());
+		lReferenceGeometry = parser->GetGeometry(mesh->GetNode());
 		lReferenceGlobalInitPosition *= lReferenceGeometry;
 		lReferenceGlobalCurrentPosition = globalPosition;
 
 		// Get the link initial global position and the link current global position.
 		cluster->GetTransformLinkMatrix(lClusterGlobalInitPosition);
 		// Multiply lClusterGlobalInitPosition by Geometric Transformation
-		lClusterGeometry = parser->getGeometry(cluster->GetLink());
+		lClusterGeometry = parser->GetGeometry(cluster->GetLink());
 		lClusterGlobalInitPosition *= lClusterGeometry;
-		lClusterGlobalCurrentPosition = parser->getGlobalPosition(cluster->GetLink(), currTime, &lParentGlobalMatrix);
+		lClusterGlobalCurrentPosition = parser->GetGlobalPosition(cluster->GetLink(), currTime, &lParentGlobalMatrix);
 
 		// Compute the shift of the link relative to the reference.
 		//ModelM-1 * AssoM * AssoGX-1 * LinkGX * LinkM-1*ModelM
@@ -894,12 +1030,12 @@ void ModelReconstruct::computeClusterDeformation(FbxMesh *mesh, FbxAMatrix &glob
 		cluster->GetTransformMatrix(lReferenceGlobalInitPosition);
 		lReferenceGlobalCurrentPosition = globalPosition;
 		// Multiply lReferenceGlobalInitPosition by Geometric Transformation
-		lReferenceGeometry = parser->getGeometry(mesh->GetNode());
+		lReferenceGeometry = parser->GetGeometry(mesh->GetNode());
 		lReferenceGlobalInitPosition *= lReferenceGeometry;
 
 		// Get the link initial global position and the link current global position.
 		cluster->GetTransformLinkMatrix(lClusterGlobalInitPosition);
-		lClusterGlobalCurrentPosition = parser->getGlobalPosition(cluster->GetLink(), currTime, &lParentGlobalMatrix);
+		lClusterGlobalCurrentPosition = parser->GetGlobalPosition(cluster->GetLink(), currTime, &lParentGlobalMatrix);
 
 		// Compute the initial position of the link relative to the reference.
 		lClusterRelativeInitPosition = lClusterGlobalInitPosition.Inverse() * lReferenceGlobalInitPosition;
@@ -912,257 +1048,105 @@ void ModelReconstruct::computeClusterDeformation(FbxMesh *mesh, FbxAMatrix &glob
 	}
 }
 
-void ModelReconstruct::keyFunc(unsigned char key, int x, int y)
+void MotionFunc(int x, int y)
 {
-	//resetTransformFactor();
-
-	switch (key) {
-	case 'w':
-	case 'W':
-		deltaMove = 1.0f;
-		cameraOffY = 1.0f;
-		//xRot -= 2.0;
-		break;
-	case 's':
-	case 'S':
-		deltaMove = -1.0f;
-
-		cameraOffY = -1.0f;
-		//xRot += 2.0;
-		break;
-	case 'a':
-	case 'A':
-		cameraOffX = 1.0f;
-		zRot -= 2.0;
-		break;
-	case 'd':
-	case 'D':
-		zRot += 2.0;
-		break;
-	case 'z':
-	case 'Z':
-		xScale += 0.1;
-		yScale += 0.1;
-		zScale += 0.1;
-		break;
-	case 'x':
-	case 'X':
-		xScale -= 0.1;
-		yScale -= 0.1;
-		zScale -= 0.1;
-		break;
-	default:
-		FBXSDK_printf("undefined key: %c\n",key);
-		break;
-	}
-	if (xRot > 356.0)
-		xRot = 0.0;
-	if (xRot < -1.0)
-		xRot = 355.0;
-	if (zRot > 356.0)
-		zRot = 0.0;
-	if (zRot < -1.0)
-		zRot = 355.0;
-
-	glutPostRedisplay();
-}
-
-void keysCallBack(unsigned char key, int x, int y)
-{
-	currModelRec->keyFunc(key, x, y);
-}
-
-
-void ModelReconstruct::activateKeyBoard()
-{
-	
-	currModelRec = this;
-	glutKeyboardFunc(::keysCallBack);
-}
-
-
-void ModelReconstruct::motionFunc(int x, int y)
-{
-	// this will only be true when the left button is down
-	if (xOrigin >= 0) {
-		// update deltaAngle
-		deltaAngle = (x - xOrigin) * 0.001f;
-
-		// update camera's direction
-		cameraRotX = -sin(angle + deltaAngle);
-		cameraRotY = cos(angle + deltaAngle);
-		
-		//FBXSDK_printf("cameraRotX: %f, cameraRotY: %f, x: %d\n\n", cameraRotX, cameraRotY, x);
-	}
-	else {
-		FBXSDK_printf("nothing \n\n");
-	}
-}
-
-
-void motionCallBack(int x, int y)
-{
-	currModelRec->motionFunc(x, y);
-}
-
-void ModelReconstruct::activateMotionFunc()
-{
-	currModelRec = this;
-	glutMotionFunc(::motionCallBack);
-}
-
-void ModelReconstruct::mouseFunc(int button, int state, int x, int y)
-{
-	
-	// only start motion if the left button is pressed
-	if (button == GLUT_LEFT_BUTTON) {
-
-		// when the button is released
-		if (state == GLUT_UP) {
-			angle += deltaAngle;
-			xOrigin = -1;
-		}
-		else  {// state = GLUT_DOWN
-			xOrigin = x;
-		}
-	}
-}
-
-void mouseCallBack(int button, int state, int x, int y)
-{
-	currModelRec->mouseFunc(button, state, x, y);
-}
-
-void ModelReconstruct::activateMouseFunc()
-{
-	currModelRec = this;
-	glutMouseFunc(::mouseCallBack);
-}
-
-void ModelReconstruct::keyUpFunc(unsigned char key, int x, int y)
-{
-	switch (key)
+	switch (cameraManager->GetCameraStatus())
 	{
-	case 'w':
-	case 's':
-		cameraOffY = 0.0f;
-		deltaMove = 0.0f;
+	case CAMERA_ORBIT:
+		cameraManager->CameraOrbit(parser->GetFbxScene(), x, y);
+		parser->SetAnimStatus(MUST_BE_REFRESHED);
 		break;
-	case 'a':
-	case 'd':
-		cameraOffX = 0.0f;
-		deltaMove = 0.0f;
+	case CAMERA_ZOOM:
+		cameraManager->CameraZoom(parser->GetFbxScene(), y);
+		cameraManager->SetLastY(y);
+		parser->SetAnimStatus(MUST_BE_REFRESHED);
+		break;
+	case CAMERA_PAN:
+		cameraManager->CameraPan(parser->GetFbxScene(), x, y);
+		parser->SetAnimStatus(MUST_BE_REFRESHED);
 		break;
 	default:
 		break;
 	}
 }
 
-void keyUpCallBack(unsigned char key, int x, int y)
+void MouseFunc(int button, int state, int x, int y)
 {
-	currModelRec->keyUpFunc(key, x, y);
-}
-
-void ModelReconstruct::activeKeyUpFunc()
-{
-	currModelRec = this;
-	glutKeyboardUpFunc(::keyUpCallBack);
-}
-
-void ModelReconstruct::activeIdleFunc()
-{
-	currModelRec = this;
-	glutIdleFunc(::displayCallBack);
-}
-
-void ModelReconstruct::loop()
-{
-	glutPostRedisplay();
-	glutMainLoop();
-}
-
-void ModelReconstruct::resetTransformFactor()
-{
-	xRot = 0.0;
-	zRot = 0.0;
-
-	xScale = 1.0;
-	yScale = 1.0;
-	zScale = 1.0;
-	 
-}
-
-//since we failed to get the data from texture image, this function is not be called
-bool ModelReconstruct::loadGLTextures()
-{
-	bool status = false;
-	RGBImgStructure *textureImage[1];	//create storage space for textures
-	memset(textureImage, 0, sizeof(RGBImgStructure*) * 1);	//init the pointer to NULL
 	
-	FbxString fileName = parser->getTextureFileName();
+	FbxCamera *lCamera = cameraManager->GetCurrentCamera(parser->GetFbxScene());
+	if (lCamera)
+	{
+		cameraManager->SetCamPosition(lCamera->Position.Get());
+		cameraManager->SetCamCenter(lCamera->InterestPosition.Get());
+		cameraManager->SetRoll(lCamera->Roll.Get());
 
-	glEnable(GL_TEXTURE_2D);
-	glGenTextures(1, &textureArr[0]);
-	glBindTexture(GL_TEXTURE_2D, textureArr[0]); //bind the texture to it's array
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+	}
+	cameraManager->SetLastX(x);
+	cameraManager->SetLastY(y);
 
-	if (isNotEmpty(fileName)) {
-		switch (getFileSuffix(fileName.Buffer()))
+	switch (button)
+	{
+	case GLUT_LEFT_BUTTON:
+		// ORBIT (or PAN)
+		switch (state)
 		{
-		case eTextureType::TGA:
-			return loadTGA(fileName.Buffer(), textureArr[0]);
+		case GLUT_DOWN:
+			if (cameraManager->GetCameraStatus() == CAMERA_ZOOM)
+			{
+				cameraManager->SetCamStatus(CAMERA_PAN);
+			}
+			else
+			{
+				cameraManager->SetCamStatus(CAMERA_ORBIT);
+			}
 			break;
-		case eTextureType::DDS:
-			return loadDDS(fileName.Buffer());
-		case eTextureType::BMP:
-			textureImage[0] = loadBMP(fileName.Buffer());
-			break;
-		case eTextureType::UNKNOWN:
-			FBXSDK_printf("error!\n\n");
-			break;
+
 		default:
+			if (cameraManager->GetCameraStatus() == CAMERA_PAN)
+			{
+				cameraManager->SetCamStatus(CAMERA_ZOOM);
+			}
+			else
+			{
+				cameraManager->SetCamStatus(CAMERA_NOTHING);
+			}
 			break;
 		}
+		break;
+
+	case GLUT_MIDDLE_BUTTON:
+		// ZOOM (or PAN)
+		switch (state)
+		{
+		case GLUT_DOWN:
+			if (cameraManager->GetCameraStatus() == CAMERA_ORBIT)
+			{
+				cameraManager->SetCamStatus(CAMERA_PAN);
+			}
+			else
+			{
+				cameraManager->SetCamStatus(CAMERA_ZOOM);
+			}
+			break;
+
+		default:
+			if (cameraManager->GetCameraStatus() == CAMERA_PAN)
+			{
+				cameraManager->SetCamStatus(CAMERA_ORBIT);
+			}
+			else
+			{
+				cameraManager->SetCamStatus(CAMERA_NOTHING);
+			}
+			break;
+		}
+		break;
 	}
-	return status;
 }
 
-
-void ModelReconstruct::reshapeFunc(int w, int h)
+void ReshapeFunc(int w, int h)
 {
-	// Prevent a divide by zero, when window is too short
-	if (h == 0)
-		h = 1;
-
-	float ratio = w * 1.0 / h;
-
-	// Use the Projection Matrix
-	glMatrixMode(GL_PROJECTION);
-
-	// Reset Matrix
-	glLoadIdentity();
-
-	// Set the viewport to be the entire window
-	glViewport(0, 0, w, h);
-
-	// Set the correct perspective.
-	gluPerspective(120.0f, ratio, 1.0f, 80000.0f);
-
-	// Get Back to the Modelview
-	glMatrixMode(GL_MODELVIEW);
-}
-
-void reshapeCallBack(int w, int h)
-{
-	currModelRec->reshapeFunc(w, h);
-}
-
-void ModelReconstruct::activeReshapFunc()
-{
-	currModelRec = this;
-	glutReshapeFunc(::reshapeCallBack);
+	glViewport(0, 0, (GLsizei)w, (GLsizei)h);
+	windowWidth = w;
+	windowHeight = h;
 }
