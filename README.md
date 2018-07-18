@@ -3,20 +3,26 @@
 # Overview
 This is a *.fbx Parser which parses the *.fbx file and reconstructs the model on OpenGL. 
 
-This program consists of two parts: the **fbx-parser** part and the **model-reconstruct** part.Sections below shows the details of them.
+Pictures below shows some models.
 
-![image](https://github.com/Larry955/FbxParser/blob/master/reconstruct-bunny.png)
+**render in shaded mode**
 
+![image](https://github.com/Larry955/FbxParser/blob/master/Photos/select%20menus.png)
 
-==========================update on 2,Jan,2018=======================================
-add keyboard processing function.
+**render in wireframe mode**
 
-press **w and s** to revolve the model around x axis, and press **a and d** to revolve around z axis.
+![image](https://github.com/Larry955/FbxParser/blob/master/Photos/%E8%8F%9C%E5%8D%95%E9%80%89%E6%8B%A92.png)
 
-press **z** to scale-up the model while **x** to scale-down. 
+**watch the model from different perspectives**
 
-press 
-# Details
+![image](https://github.com/Larry955/FbxParser/blob/master/Photos/%E5%A4%9A%E8%A7%86%E8%A7%92%E7%9B%B8%E6%9C%BA.png)
 
-## Fbx Parser
-## Model Reconstruct
+**skeleton animation**
+
+![image](https://github.com/Larry955/FbxParser/blob/master/Photos/%E9%AA%A8%E9%AA%BC%E8%BF%90%E8%A1%8C.PNG)
+![image](https://github.com/Larry955/FbxParser/blob/master/Photos/%E9%AA%A8%E9%AA%BC%E5%8A%A8%E7%94%BB.png)
+
+# Guide
+- drag mouse to move the scene.
+- click right button to select the menus, you can select different animations,cameras,and rendering mode.
+- press **A** and **D** to move model to the left or right, so as **W** or **S**.
