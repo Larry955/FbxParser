@@ -29,4 +29,4 @@ Pictures below show the effect of this program:
 - **add multiply models into one scene**. Current version only support one model, which is a little simple.
 - **export the FBX File data to new files**. I have tried to implement this feature, but only mesh data can be exported now.The animation informations are really hard to export because I don'w know how to store them in a read-friendly way. 
 
-This program is not good enough to use in practice, but I successfully parsed the FBX File and implemented the Skinned Mesh Skeleton, which is a big challenge to me. **There are still some features to be added or problems to be solved, it will be my great honor to get your helps or advices if you are interested in this program, come and join me to make it becomes better!**
+This program is not good enough to use in practice, but I successfully parsed the FBX File and implemented the Skinned Mesh Skeleton, which is a big challenge to me. **There are still some features to be added or problems to be solved, it will be my great honor to get your helps or advices if you are interested in this program, come and join me to make it better!**
